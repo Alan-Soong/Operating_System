@@ -137,6 +137,8 @@ Hardware watchpoint 1: *0x80200000
 Breakpoint 1 at 0x80200000: file kern/init/entry.S, line 7.
 ```
 
+使用`watch *0x80200000`观察内核加载瞬间，避免单步跟踪大量代码，注意此时pc并未执行到0x80200000而是内核在此时加载在该地址了。  
+使用 b* kern_entry打断点在执行到入口时停止便于观察。  
 显然，`0x80200000`对应的就是`kern_entry`函数入口位置。看看附近的代码：
 
 ```assembly
