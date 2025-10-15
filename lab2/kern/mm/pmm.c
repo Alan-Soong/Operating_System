@@ -43,13 +43,13 @@ static void check_alloc_page(void);
 static void init_pmm_manager(void) {
 #if MEMORY_MANAGER == 1
     pmm_manager = &default_pmm_manager;
-    cprintf("Using Default PMM\n");
+    // cprintf("Using Default PMM\n");
 #elif MEMORY_MANAGER == 2
     pmm_manager = &best_fit_pmm_manager;
-    cprintf("Using Best Fit PMM\n");
+    // cprintf("Using Best Fit PMM\n");
 #elif MEMORY_MANAGER == 3
     pmm_manager = &buddy_system_pmm_manager;
-    cprintf("Using Buddy System PMM\n");
+    // cprintf("Using Buddy System PMM\n");
 #else
     #error "Invalid MEMORY_MANAGER selection"
 #endif

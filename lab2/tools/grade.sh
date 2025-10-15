@@ -6,10 +6,10 @@ if [ "x$1" = "x-v" ]; then
     out=/dev/stdout
     err=/dev/stderr
 else
-    # out=/dev/null
-    # err=/dev/null
-    out=/dev/stdout
-    err=/dev/stderr
+    out=/dev/null
+    err=/dev/null
+    # out=/dev/stdout
+    # err=/dev/stderr
 fi
 
 ## make & makeopts
