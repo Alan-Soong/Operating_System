@@ -11,6 +11,7 @@
 #include <string.h>
 #include <riscv.h>
 #include <dtb.h>
+#include <slub_pmm.h>
 
 // Memory manager selection macro
 // Define one of: USE_DEFAULT_PMM, USE_BEST_FIT_PMM, USE_BUDDY_SYSTEM_PMM
@@ -138,6 +139,9 @@ void pmm_init(void) {
     satp_virtual = (pte_t*)boot_page_table_sv39;
     satp_physical = PADDR(satp_virtual);
     cprintf("satp virtual address: 0x%016lx\nsatp physical address: 0x%016lx\n", satp_virtual, satp_physical);
+
+    slub_init();
+    slub_check();
 }
 
 static void check_alloc_page(void) {
