@@ -16,7 +16,7 @@
 // Memory manager selection macro
 // Define one of: USE_DEFAULT_PMM, USE_BEST_FIT_PMM, USE_BUDDY_SYSTEM_PMM
 #ifndef MEMORY_MANAGER
-#define MEMORY_MANAGER 4
+#define MEMORY_MANAGER 2
 #endif
 
 // virtual address of physical page array
@@ -119,7 +119,7 @@ static void page_init(void) {
     if (freemem < mem_end) {
         init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE);
     }
-    cprintf("page_init done: npage = %d\n", npage);
+    //cprintf("page_init done: npage = %d\n", npage);
 }
 
 /* pmm_init - initialize the physical memory management */
