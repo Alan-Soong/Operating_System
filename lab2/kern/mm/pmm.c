@@ -16,7 +16,7 @@
 // Memory manager selection macro
 // Define one of: USE_DEFAULT_PMM, USE_BEST_FIT_PMM, USE_BUDDY_SYSTEM_PMM
 #ifndef MEMORY_MANAGER
-#define MEMORY_MANAGER 2
+#define MEMORY_MANAGER 2//测grade
 #endif
 
 // virtual address of physical page array
@@ -107,15 +107,15 @@ static void page_init(void) {
 
     npage = maxpa / PGSIZE;
     //kernel在end[]结束, pages是剩下的页的开始
-    pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);
+    //pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);
     
     for (size_t i = 0; i < npage - nbase; i++) {
         SetPageReserved(pages + i);
     }
     uintptr_t freemem = PADDR((uintptr_t)pages + sizeof(struct Page) * (npage - nbase));
     
-    mem_begin = ROUNDUP(freemem, PGSIZE);
-    mem_end = ROUNDDOWN(mem_end, PGSIZE);
+    //mem_begin = ROUNDUP(freemem, PGSIZE);
+    //mem_end = ROUNDDOWN(mem_end, PGSIZE);
     if (freemem < mem_end) {
         init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE);
     }
