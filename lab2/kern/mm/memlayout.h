@@ -2,32 +2,26 @@
 #define __KERN_MM_MEMLAYOUT_H__
 
 /* All physical memory mapped at this address */
-#define KERNBASE                0xFFFFFFFFC0200000 // = 0x80200000(物理内存里内核的起始位置, KERN_BEGIN_PADDR) + 0xFFFFFFFF40000000(偏移量, PHYSICAL_MEMORY_OFFSET)
+#define KERNBASE            0xFFFFFFFFC0200000 // = 0x80200000(物理内存里内核的起始位置, KERN_BEGIN_PADDR) + 0xFFFFFFFF40000000(偏移量, PHYSICAL_MEMORY_OFFSET)
 //把原有内存映射到虚拟内存空间的最后一页
-#define KMEMSIZE                0x7E00000          // the maximum amount of physical memory
+#define KMEMSIZE            0x7E00000          // the maximum amount of physical memory
 // 0x7E00000 = 0x8000000 - 0x200000
 // QEMU 缺省的RAM为 0x80000000到0x88000000, 128MiB, 0x80000000到0x80200000被OpenSBI占用
-#define KERNTOP                 (KERNBASE + KMEMSIZE) // 0x88000000对应的虚拟地址
+#define KERNTOP             (KERNBASE + KMEMSIZE) // 0x88000000对应的虚拟地址
 
-#define PHYSICAL_MEMORY_END     0x88000000
-#define PHYSICAL_MEMORY_OFFSET  0xFFFFFFFF40000000
-#define KERNEL_BEGIN_PADDR      0x80200000
-#define KERNEL_BEGIN_VADDR      0xFFFFFFFFC0200000
+#define PHYSICAL_MEMORY_END         0x88000000
+#define PHYSICAL_MEMORY_OFFSET      0xFFFFFFFF40000000
+#define KERNEL_BEGIN_PADDR          0x80200000
+#define KERNEL_BEGIN_VADDR          0xFFFFFFFFC0200000
 
 
-#define KSTACKPAGE              2                  // # of pages in kernel stack
-#define KSTACKSIZE              (KSTACKPAGE * PGSIZE)      // sizeof kernel stack
-
-// -------------------- C-SPECIFIC CODE STARTS HERE --------------------
-// 下面的代码块只在被 C 编译器处理时才可见，汇编器会忽略它们
+#define KSTACKPAGE          2                           // # of pages in kernel stack
+#define KSTACKSIZE          (KSTACKPAGE * PGSIZE)       // sizeof kernel stack
 
 #ifndef __ASSEMBLER__
 
 #include <defs.h>
 #include <list.h>
-
-// 新增的前向声明：告诉编译器 kmem_cache 是一个存在的结构体，以避免编译错误
-struct kmem_cache;
 
 typedef uintptr_t pte_t;
 typedef uintptr_t pde_t;
@@ -38,34 +32,25 @@ typedef uintptr_t pde_t;
  * that convert Page to other data types, such as physical address.
  * */
 struct Page {
-    int ref;                  // page frame's reference counter
-    uint64_t flags;           // array of flags that describe the status of the page frame
-    unsigned int property;    // the num of free block, used in first fit pm manager
-    list_entry_t page_link;   // free list link
-
-    // --------------- SLUB Allocator START ----------------
-    // Add these fields for the SLUB allocator challenge
-    // 当一个 Page 被 SLUB 用作 Slab 时，这些字段才有意义
-    struct kmem_cache *cache; // 指向所属的缓存管理器
-    unsigned int inuse;       // 已分配对象数量
-    void *freelist;           // 指向此 Slab 的第一个空闲对象
-    list_entry_t slab_link;   // 用于链接到 cache 的 slab 列表中
-    // ---------------- SLUB Allocator END -----------------
+    int ref;                        // page frame's reference counter
+    uint64_t flags;                 // array of flags that describe the status of the page frame
+    unsigned int property;          // the num of free block, used in first fit pm manager
+    list_entry_t page_link;         // free list link
 };
 
 /* Flags describing the status of a page frame */
-#define PG_reserved                  0       // if this bit=1: the Page is reserved for kernel, cannot be used in alloc/free_pages; otherwise, this bit=0 
-#define PG_property                  1       // if this bit=1: the Page is the head page of a free memory block(contains some continuous_addrress pages), and can be used in alloc_pages; if this bit=0: if the Page is the the head page of a free memory block, then this Page and the memory block is alloced. Or this Page isn't the head page.
+#define PG_reserved                 0       // if this bit=1: the Page is reserved for kernel, cannot be used in alloc/free_pages; otherwise, this bit=0 
+#define PG_property                 1       // if this bit=1: the Page is the head page of a free memory block(contains some continuous_addrress pages), and can be used in alloc_pages; if this bit=0: if the Page is the the head page of a free memory block, then this Page and the memory block is alloced. Or this Page isn't the head page.
 
-#define SetPageReserved(page)        ((page)->flags |= (1UL << PG_reserved))
-#define ClearPageReserved(page)      ((page)->flags &= ~(1UL << PG_reserved))
-#define PageReserved(page)           (((page)->flags >> PG_reserved) & 1)
-#define SetPageProperty(page)        ((page)->flags |= (1UL << PG_property))
-#define ClearPageProperty(page)      ((page)->flags &= ~(1UL << PG_property))
-#define PageProperty(page)           (((page)->flags >> PG_property) & 1)
+#define SetPageReserved(page)       ((page)->flags |= (1UL << PG_reserved))
+#define ClearPageReserved(page)     ((page)->flags &= ~(1UL << PG_reserved))
+#define PageReserved(page)          (((page)->flags >> PG_reserved) & 1)
+#define SetPageProperty(page)       ((page)->flags |= (1UL << PG_property))
+#define ClearPageProperty(page)     ((page)->flags &= ~(1UL << PG_property))
+#define PageProperty(page)          (((page)->flags >> PG_property) & 1)
 
 // convert list entry to page
-#define le2page(le, member)             \
+#define le2page(le, member)                 \
     to_struct((le), struct Page, member)
 
 /* free_area_t - maintains a doubly linked list to record free (unused) pages */

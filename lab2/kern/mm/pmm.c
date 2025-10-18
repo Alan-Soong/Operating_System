@@ -1,6 +1,7 @@
 #include <default_pmm.h>
 #include <best_fit_pmm.h>
 #include <buddy_system_pmm.h>
+#include <slub_pmm.h>
 #include <defs.h>
 #include <error.h>
 #include <memlayout.h>
@@ -11,12 +12,11 @@
 #include <string.h>
 #include <riscv.h>
 #include <dtb.h>
-#include <slub_pmm.h>
 
 // Memory manager selection macro
 // Define one of: USE_DEFAULT_PMM, USE_BEST_FIT_PMM, USE_BUDDY_SYSTEM_PMM
 #ifndef MEMORY_MANAGER
-#define MEMORY_MANAGER 2
+#define MEMORY_MANAGER 4
 #endif
 
 // virtual address of physical page array
@@ -51,6 +51,9 @@ static void init_pmm_manager(void) {
 #elif MEMORY_MANAGER == 3
     pmm_manager = &buddy_system_pmm_manager;
     // cprintf("Using Buddy System PMM\n");
+#elif MEMORY_MANAGER == 4
+    pmm_manager = &slub_pmm_manager;
+    // cprintf("Using SLUB PMM\n");
 #else
     #error "Invalid MEMORY_MANAGER selection"
 #endif
@@ -105,18 +108,18 @@ static void page_init(void) {
     npage = maxpa / PGSIZE;
     //kernel在end[]结束, pages是剩下的页的开始
     pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);
-
+    
     for (size_t i = 0; i < npage - nbase; i++) {
         SetPageReserved(pages + i);
     }
-
     uintptr_t freemem = PADDR((uintptr_t)pages + sizeof(struct Page) * (npage - nbase));
-
+    
     mem_begin = ROUNDUP(freemem, PGSIZE);
     mem_end = ROUNDDOWN(mem_end, PGSIZE);
     if (freemem < mem_end) {
         init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE);
     }
+    cprintf("page_init done: npage = %d\n", npage);
 }
 
 /* pmm_init - initialize the physical memory management */
@@ -139,9 +142,6 @@ void pmm_init(void) {
     satp_virtual = (pte_t*)boot_page_table_sv39;
     satp_physical = PADDR(satp_virtual);
     cprintf("satp virtual address: 0x%016lx\nsatp physical address: 0x%016lx\n", satp_virtual, satp_physical);
-
-    slub_init();
-    slub_check();
 }
 
 static void check_alloc_page(void) {
