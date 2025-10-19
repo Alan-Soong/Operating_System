@@ -33,35 +33,35 @@
 
 ## 3. 数据结构
 
-#### 3.1. `struct Page` 扩展 (位于 `kern/mm/memlayout.h`)
+#### 3.1. `struct Page` 扩展
 
-为了将 Slab 的元数据与物理页帧本身绑定，我们对 `struct Page` 进行了扩展。当一个物理页被 SLUB 用作 Slab 时，以下字段将被启用：
+为了将 Slab 的元数据与物理页帧本身绑定，我们对 `struct Page` 进行了外部扩展。当一个物理页被 SLUB 用作 Slab 时，以下字段将被启用：
 
 ```c
-struct Page {
-    // ... ucore 原有字段 ...
-
-    // --- SLUB 分配器所需字段 ---
-    struct kmem_cache *cache; // 指向所属的缓存管理器
-    unsigned int inuse;       // 已分配对象数量
-    void *freelist;           // 指向此 Slab 的第一个空闲对象
-    list_entry_t slab_link;   // 用于链接到 cache 的 slab 列表中
-};
+// ——“拓展字段单独结构体”（side-car），不改 struct Page —— //
+typedef struct SlubMeta {
+    kmem_cache_t *cache;     // 该页若作为 slab，其归属的 cache
+    void *freelist;          // slab 内部空闲对象单链（指向对象头）
+    uint32_t inuse;          // 已分配对象数（大块时复用存放页数=2^k）
+    list_entry_t slab_link;  // 挂接到 cache 链表（partial）
+} SlubMeta;
 ```
 
-#### 3.2. `struct kmem_cache` (位于 `kern/mm/slub_pmm.c`)
+#### 3.2. `struct kmem_cache`
 
 这是 SLUB 分配器的核心控制器，每种大小的对象都对应一个该结构体实例。
 
 ```c
-struct kmem_cache {
-    char name[16];                // 缓存名称, 便于调试
-    unsigned int object_size;     // 对象大小
-    unsigned int objects_per_slab;// 每个 Slab 能容纳的对象数量
+typedef struct kmem_cache {
+    char name[16];
+    unsigned object_size;
+    unsigned objects_per_slab;
+    list_entry_t partial_slabs;  // 常态：只维护 partial
+#if SLUB_DEBUG
+    list_entry_t full_slabs;     // 仅调试用
+#endif
+} kmem_cache_t;
 
-    list_entry_t partial_slabs;   // 部分空闲的 Slab 链表
-    list_entry_t full_slabs;      // 已满的 Slab 链表
-};
 ```
 
 #### 3.3. `通用 kmalloc 缓存` 
@@ -69,7 +69,8 @@ struct kmem_cache {
 为了提供一个通用的 `kmalloc` 接口，我们在 `slub_init` 中预先创建了一系列大小按2的幂递增的缓存。
 
 ```c
-static kmem_cache_t *kmalloc_caches[12]; // 对应 8, 16, 32, ..., 4096 字节
+#define KMALLOC_CLASS_NUM 12     // 8,16,...,4096
+static kmem_cache_t *kmalloc_caches[KMALLOC_CLASS_NUM] = {0};
 ```
 
 ## 4. 算法与 API 实现
