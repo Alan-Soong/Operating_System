@@ -257,3 +257,64 @@ STORE s4, 35*REGBYTES(sp)
 ---
 ### 扩展练习Challenge3：完善异常中断
 编程完善在触发一条非法指令异常 mret和，在 kern/trap/trap.c的异常处理函数中捕获，并对其进行处理，简单输出异常类型和异常指令触发地址，即“Illegal instruction caught at 0x(地址)”，“ebreak caught at 0x（地址）”与“Exception type:Illegal instruction"，“Exception type: breakpoint”。
+
+#### 代码的补充
+
+我们添加代码如下：
+
+```c
+case CAUSE_ILLEGAL_INSTRUCTION:
+            // 非法指令异常处理
+            // LAB3 CHALLENGE3   YOUR CODE : 
+            cprintf("Illegal instruction caught at 0x%08x, epc = 0x%lx\n", tf->epc, tf->epc); // (1)
+            cprintf("Exception type:Illegal instruction\n"); // (2)
+            tf->epc += 4; // (3) 指向下一条指令，防止死循环
+            break;
+        case CAUSE_BREAKPOINT:
+            //断点异常处理
+            // LAB3 CHALLLENGE3   YOUR CODE :  
+            cprintf("Breakpoint caught at 0x%08x, epc = 0x%lx\n", tf->epc, tf->epc); // (1)
+            cprintf("Exception type:Breakpoint\n"); // (2)
+            tf->epc += 4; // (3) 指向下一条指令，防止死循环
+            break;
+```
+
+这里的主要内容在于捕获错误的信息。
+
+#### 为什么需要修改
+
+在操作系统内核中，当用户程序或内核代码执行非法指令（如在用户模式下执行特权指令mret）或断点指令（ebreak）时会触发相应的异常。
+
+这些异常需要被捕获和处理，以避免系统崩溃或无限循环。通过在trap.c的exception_handler函数中添加处理逻辑，我们可以：
+
+* 输出异常类型和触发地址，帮助开发者调试问题。
+* 更新程序计数器（tf->epc），跳过异常指令，继续执行后续代码。
+* 防止异常处理后重新执行相同的异常指令，导致死循环。
+
+如果不处理这些异常，系统可能会panic或行为不可预测。用户指定的输出格式确保了信息的清晰性和一致性。
+
+#### 修改步骤及每步道理
+
+1. **定位到`exception_handler`函数中的`CAUSE_ILLEGAL_INSTRUCTION` case**  
+   - 这个case专门处理非法指令异常（如执行`mret`在非特权模式下）。我们需要在这里添加代码来捕获和响应异常。定位准确确保修改只影响相关异常类型，避免影响其他异常处理。
+
+2. **在`CAUSE_ILLEGAL_INSTRUCTION` case中添加输出语句**  
+   - 添加 `cprintf("Illegal instruction caught at 0x%08x\n", tf->epc);` 和 `cprintf("Exception type:Illegal instruction\n");`。  
+   - `tf->epc`存储了异常指令的地址，使用`%08x`格式化输出为8位十六进制，便于阅读。输出异常类型帮助识别问题来源。这些语句提供调试信息，用户要求的确切格式确保一致性。
+
+3. **在`CAUSE_ILLEGAL_INSTRUCTION` case中添加 `tf->epc += 4;`**  
+   - RISC-V指令通常为4字节长。异常发生时，`epc`指向异常指令；不更新它会导致返回后重新执行相同指令，引发无限循环。加4跳到下一条指令，确保程序继续执行。
+
+4. **定位到`exception_handler`函数中的`CAUSE_BREAKPOINT` case**  
+   - 这个case处理断点异常（`ebreak`指令）。类似非法指令，我们需要单独处理以区分异常类型。定位准确避免误修改其他case。
+
+5. **在`CAUSE_BREAKPOINT` case中添加输出语句**  
+   - 添加 `cprintf("eBreak caught at 0x%08x\n", tf->epc);` 和 `cprintf("Exception type: eBreak\n");`。  
+   - `ebreak`是断点指令，输出其地址和类型（注意指定"eBreak caught"和"eBreak"）有助于调试。格式与非法指令保持一致，便于日志分析。
+
+6. **在`CAUSE_BREAKPOINT` case中添加 `tf->epc += 4;`**  
+   - 与非法指令相同，断点指令也是4字节。更新`epc`防止重新触发断点，导致调试器或程序卡住。
+
+总结来说，异常只在执行非法指令或断点时触发（如用户模式执行mret或遇到ebreak）。处理逻辑基于tf->cause的值判断异常类型，确保只在相应case中执行。
+
+修改后，编译并运行系统（如使用make qemu）以测试输出。确保tf->epc更新正确，否则可能导致崩溃。
