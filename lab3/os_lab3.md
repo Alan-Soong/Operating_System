@@ -21,6 +21,86 @@
 
 ### 扩增练习 Challenge2：理解上下文切换机制
 回答：在trapentry.S中汇编代码 csrw sscratch, sp；csrrw s0, sscratch, x0实现了什么操作，目的是什么？save all里面保存了stval scause这些csr，而在restore all里面却不还原它们？那这样store的意义何在呢？
+  
+#### 在trapentry.S中汇编代码 csrw sscratch, sp；csrrw s0, sscratch, x0实现了什么操作，目的是什么？
 
+```asm
+csrw sscratch, sp
+```
+
+* 含义：将当前栈指针 `sp` 写入 CSR `sscratch`。
+* 目的：当陷入异常时，硬件不会自动保存原先的 `sp`，
+所以我们人为地在陷入开始时，把“陷入前的内核栈顶”放到 `sscratch` 中，以备后续使用。    
+```asm
+csrrw s0, sscratch, x0
+```
+
+* 含义：
+  这是一个**原子交换（read-write）**指令，执行以下动作：
+  1. 读出 `sscratch` 当前的值（也就是先前保存的 `sp`），放入 `s0`
+  2. 将 `x0`（即 0）写回 `sscratch`
+
+所以执行完后：
+
+* `s0` ← 原来的 `sp`（陷入前的栈指针）
+* `sscratch` ← 0  
+
+**这两条指令配合的意图： 在陷入时保存并识别异常来源。**
+
+1. **保存原栈指针（sp）**
+
+   * 进入 trap 时立即保存 `sp` 到 `sscratch`
+   * 避免后续切换栈或压栈时破坏原值
+
+2. **区分异常来源（内核 or 用户态）**
+
+   * 如果下一次异常发生时 `sscratch == 0`，说明当前已经在内核态（因为上一次 trap 已经清空了 `sscratch`）
+   * 如果 `sscratch != 0`，说明是用户态 trap（因为用户态不会写 `sscratch`）
+
+这是一种经典的 **递归陷入检测** 设计技巧。
+
+---
+
+#### save all里面保存了stval scause这些csr，而在restore all里面却不还原它们？那这样store的意义何在呢？  
+
+在 `SAVE_ALL` 里保存这些寄存器：
+
+```asm
+csrr s1, sstatus
+csrr s2, sepc
+csrr s3, sbadaddr
+csrr s4, scause
+STORE s1, 32*REGBYTES(sp)
+STORE s2, 33*REGBYTES(sp)
+STORE s3, 34*REGBYTES(sp)
+STORE s4, 35*REGBYTES(sp)
+```
+
+这些寄存器内容是 **陷入现场的信息**：
+
+| CSR                  | 含义                   |
+| -------------------- | -------------------- |
+| `sstatus`            | 陷入前的状态寄存器（中断开关、特权级等） |
+| `sepc`               | 陷入前的 PC（返回地址）        |
+| `sbadaddr` / `stval` | 异常相关的错误地址            |
+| `scause`             | 异常原因（如非法指令、中断类型等）    |
+
+这些信息是 **trap 处理函数（即 `trap()` C 函数）需要读取的内容**。
+
+> `SAVE_ALL` 保存它们的目的是 **把陷入现场完整封装在 trapframe（栈帧）中**，
+> 以便 C 语言的 `trap()` 函数能直接读取这些字段（如 `tf->scause`, `tf->stval`）。
+
+---
+
+ `RESTORE_ALL` 不需要恢复它们，因为这些 CSR 是**只在陷入时有意义的状态信息**：
+
+* 它们描述的是“上一次 trap 的原因和现场”；
+* 当 trap 处理完毕要返回时（通过 `sret`），硬件只关心两样东西：
+
+  * `sstatus` — 处理完后恢复的状态（是否重新启用中断、回到哪个特权级）
+  * `sepc` — 返回的 PC 地址（从哪继续执行）  
+
+  而像 `stval`、`scause` 是只读的 trap 诊断信息，不影响程序恢复执行。  
+---
 ### 扩展练习Challenge3：完善异常中断
 编程完善在触发一条非法指令异常 mret和，在 kern/trap/trap.c的异常处理函数中捕获，并对其进行处理，简单输出异常类型和异常指令触发地址，即“Illegal instruction caught at 0x(地址)”，“ebreak caught at 0x（地址）”与“Exception type:Illegal instruction"，“Exception type: breakpoint”。
