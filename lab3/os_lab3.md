@@ -17,6 +17,103 @@
 要求完成问题1提出的相关函数实现，提交改进后的源代码包（可以编译执行），并在实验报告中简要说明实现过程和定时器中断中断处理的流程。实现要求的部分代码后，运行整个系统，大约每1秒会输出一次”100 ticks”，输出10行。  
 
 ---
+
+####  1. 实现过程
+
+
+具体的实现步骤如下：
+
+a.  **包含头文件**：
+    在 `kern/trap/trap.c` 文件的顶部，添加 `#include <sbi.h>`。这是为了后续能够调用 OpenSBI 提供的 `sbi_shutdown()` 关机函数。
+
+b.  **定位处理函数**：
+    在 `trap.c` 中找到 `interrupt_handler(struct trapframe *tf)` 函数，该函数负责分发所有 S 模式的中断（Interrupts）。
+
+c.  **补充 `case IRQ_S_TIMER` 逻辑**：
+    在 `interrupt_handler` 函数的 `switch (cause)` 语句中，我们找到了 `case IRQ_S_TIMER:`，并补充了以下处理逻辑：
+
+    ```c
+        case IRQ_S_TIMER:
+            // "All bits besides SSIP and USIP in the sip register are
+            // read-only." -- privileged spec1.9.1, 4.1.4, p59
+            // In fact, Call sbi_set_timer will clear STIP, or you can clear it
+            // directly.
+            // cprintf("Supervisor timer interrupt\n");
+             /* LAB3 EXERCISE1   YOUR CODE : 2311101 */
+            /*(1)设置下次时钟中断- clock_set_next_event()
+             *(2)计数器（ticks）加一
+             *(3)当计数器加到100的时候，我们会输出一个`100ticks`表示我们触发了100次时钟中断，同时打印次数（num）加一
+            * (4)判断打印次数，当打印次数为10时，调用<sbi.h>中的关机函数关机
+            */
+            clock_set_next_event();
+            if (++ticks % TICK_NUM == 0) {
+                print_ticks();
+                static int print_count = 0;
+                print_count++;
+                if (print_count == 10) {
+                    sbi_shutdown(); // 关机
+                }
+            }
+            break;
+    ```
+
+#### 代码逻辑详解：
+
+* `clock_set_next_event()`：RISC-V 的时钟中断是“一次性”的，每次触发后必须由软件重新设置下一次触发的时间。`clock_set_next_event()` 函数会调用 `sbi_set_timer`，将下一次中断时间设置为“当前时间 + `timebase`”。如果缺少这一行，时钟中断将只会触发一次。
+* `if (++ticks % TICK_NUM == 0)`：`ticks` 是定义在 `clock.c` 中的全局计数器，`TICK_NUM` 宏定义为 100。此行代码实现了“每 100 次时钟中断”执行一次后续操作。
+* `static int print_count = 0;`：我们使用一个**静态（static）**局部变量来累计 `print_ticks()` 的调用次数,确保了 `print_count` 只被初始化一次，并且它的值能在多次 `interrupt_handler` 调用之间保持不变，从而实现正确的计数。
+* `if (print_count == 10) { sbi_shutdown(); }`：当 `print_count` 达到 10，证明 "100 ticks" 已打印 10 行，此时调用 `sbi_shutdown()` 结束内核运行，完成测试。
+
+#### 2. 定时器中断中断处理的流程
+
+一次完整的 S 模式定时器中断（`IRQ_S_TIMER`）的处理流程如下：
+
+1.  **[硬件] 中断触发**：
+    CPU 内部的 `time` 寄存器值达到了 M 模式固件（OpenSBI）之前通过 `sbi_set_timer` 设定的阈值。
+
+2.  **[硬件] 自动陷入 (Trap)**：
+    CPU 立即暂停当前执行的指令，并自动完成一系列操作：
+    * 将当前程序计数器 `pc` 保存到 `sepc` 寄存器。
+    * 将中断原因 `IRQ_S_TIMER` (值为 5) 写入 `scause` 寄存器（最高位置 1，表示是中断）。
+    * 自动关闭 S 模式中断（清除 `sstatus` 寄存器的 `SIE` 位），防止中断嵌套。
+    * 将 `pc` 设置为 `stvec` 寄存器中保存的地址，即 `__alltraps` 的入口地址。
+
+3.  **[软件] 保存上下文 (SAVE_ALL)**：
+    * 执行 `trapentry.S` 中的 `__alltraps` 汇编代码。
+    * 在内核栈上开辟一块 `trapframe` 大小的空间。
+    * 将全部 32 个通用寄存器（`x0-x31`）以及 `sstatus`, `sepc`, `scause` 等 CSR 寄存器的值保存到栈上的 `trapframe` 结构体中。
+
+4.  **[软件] C 函数分发 (trap_dispatch)**：
+    * 汇编代码将指向 `trapframe` 的指针（即当前 `sp`）存入 `a0` 寄存器，然后 `jal trap` 调用 C 函数 `trap(struct trapframe *tf)`。
+    * `trap_dispatch(tf)` 函数检查 `tf->cause` 的最高位，发现是中断（负数），于是调用 `interrupt_handler(tf)`。
+
+5.  **[软件] 中断处理**：
+    * `interrupt_handler` 函数根据 `tf->cause` 的具体值（去掉最高位后为 5），进入 `case IRQ_S_TIMER:` 分支。
+    * 执行我们编写的 C 代码：设置下一次时钟中断、递增 `ticks`、判断是否满 100 次、打印、判断是否满 10 次、关机。
+
+6.  **[软件] 恢复上下文 (RESTORE_ALL)**：
+    * C 函数返回到 `trapentry.S` 中的 `__trapret` 标签处。
+    * `RESTORE_ALL` 宏执行，从栈上的 `trapframe` 中将所有寄存器的值加载回对应的 CPU 寄存器（`x1-x31`, `sstatus`, `sepc`）。
+    * 恢复 `sp` 栈指针。
+
+7.  **[硬件] 中断返回 (sret)**：
+    * 执行 `sret` 特权指令。
+    * CPU 自动将 `sepc` 寄存器的值恢复到 `pc`。
+    * CPU 自动将 `sstatus.SPIE` 的值恢复到 `sstatus.SIE`（即重新使能中断）。
+    * CPU 从 `pc` 指向的地址（即被中断的指令）继续执行。
+
+#### 3. 结果验证
+
+按照上述步骤修改 `trap.c` 文件后，在 `lab3` 目录下执行 `make qemu`。
+观察 QEMU 的输出，可以看到内核启动后，大约每隔 1 秒打印一行 "100 ticks"。
+在 "100 ticks" 累计打印 10 行之后，QEMU 模拟器自动关闭，终端返回命令提示符。
+实验现象与要求完全一致，证明时钟中断处理实现正确。
+
+  <div align="center">
+    <img src="img/1.jpg" width="50%">  
+  </div>
+
+---
 ### 扩展练习 Challenge1：描述与理解中断流程
 回答：描述ucore中处理中断异常的流程（从异常的产生开始），其中mov a0，sp的目的是什么？SAVE_ALL中寄存器保存在栈中的位置是什么确定的？对于任何中断，__alltraps 中都需要保存所有寄存器吗？请说明理由。  
  
