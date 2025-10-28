@@ -174,15 +174,15 @@ void exception_handler(struct trapframe *tf) {
 case CAUSE_ILLEGAL_INSTRUCTION:
             // 非法指令异常处理
             // LAB3 CHALLENGE3   YOUR CODE : 
-            cprintf("Illegal instruction\n"); // (1)
-            cprintf("epc = 0x%lx\n", tf->epc); // (2)
+            cprintf("Illegal instruction caught at 0x%08x, epc = 0x%lx\n", tf->epc, tf->epc); // (1)
+            cprintf("Exception type:Illegal instruction\n"); // (2)
             tf->epc += 4; // (3) 指向下一条指令，防止死循环
             break;
         case CAUSE_BREAKPOINT:
             //断点异常处理
             // LAB3 CHALLLENGE3   YOUR CODE :  
-             cprintf("Breakpoint\n"); // (1)
-            cprintf("epc = 0x%lx\n", tf->epc); // (2)
+            cprintf("Breakpoint caught at 0x%08x, epc = 0x%lx\n", tf->epc, tf->epc); // (1)
+            cprintf("Exception type:Breakpoint\n"); // (2)
             tf->epc += 4; // (3) 指向下一条指令，防止死循环
             break;
         case CAUSE_MISALIGNED_LOAD:
