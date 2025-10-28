@@ -85,10 +85,8 @@ STORE s4, 35*REGBYTES(sp)
 | `sbadaddr` / `stval` | 异常相关的错误地址            |
 | `scause`             | 异常原因（如非法指令、中断类型等）    |
 
-这些信息是 **trap 处理函数（即 `trap()` C 函数）需要读取的内容**。
-
-> `SAVE_ALL` 保存它们的目的是 **把陷入现场完整封装在 trapframe（栈帧）中**，
-> 以便 C 语言的 `trap()` 函数能直接读取这些字段（如 `tf->scause`, `tf->stval`）。
+这些信息是 **trap 处理函数（即 `trap()` C 函数）需要读取的内容**。  
+`SAVE_ALL` 保存它们的目的是 **把陷入现场完整封装在 trapframe（栈帧）中**，以便 C 语言的 `trap()` 函数能直接读取这些字段（如 `tf->scause`, `tf->stval`）。
 
 ---
 
