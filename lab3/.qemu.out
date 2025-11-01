@@ -30,7 +30,7 @@ DTB init completed
 (THU.CST) os is loading ...
 Special kernel symbols:
   entry  0xffffffffc0200054 (virtual)
-  etext  0xffffffffc0201edc (virtual)
+  etext  0xffffffffc0201f04 (virtual)
   edata  0xffffffffc0206028 (virtual)
   end    0xffffffffc02064a0 (virtual)
 Kernel executable memory footprint: 26KB
@@ -40,6 +40,14 @@ physcial memory map:
 check_alloc_page() succeeded!
 satp virtual address: 0xffffffffc0205000
 satp physical address: 0x0000000080205000
+
+=== TRAP TEST: generating illegal instruction ===
+Illegal instruction caught at 0xc02000a0, epc = 0xffffffffc02000a0
+Exception type:Illegal instruction
+=== TRAP TEST: generating ebreak ===
+eBreak caught at 0xc02000b0, epc = 0xffffffffc02000b0
+Exception type:Breakpoint
+=== TRAP TEST: returned (unexpected) ===
 ++ setup timer interrupts
 100 ticks
 100 ticks

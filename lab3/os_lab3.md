@@ -312,8 +312,8 @@ case CAUSE_ILLEGAL_INSTRUCTION:
    - 添加 `cprintf("eBreak caught at 0x%08x\n", tf->epc);` 和 `cprintf("Exception type: eBreak\n");`。  
    - `ebreak`是断点指令，输出其地址和类型（注意指定"eBreak caught"和"eBreak"）有助于调试。格式与非法指令保持一致，便于日志分析。
 
-6. **在`CAUSE_BREAKPOINT` case中添加 `tf->epc += 4;`**  
-   - 与非法指令相同，断点指令也是4字节。更新`epc`防止重新触发断点，导致调试器或程序卡住。
+6. **在`CAUSE_BREAKPOINT` case中添加 `tf->epc += 2;`**  
+   - 汇编器把ebreak压缩指令`cbreak`——是2字节。更新`epc`防止重新触发断点，导致调试器或程序卡住。
 
 总结来说，异常只在执行非法指令或断点时触发（如用户模式执行mret或遇到ebreak）。处理逻辑基于tf->cause的值判断异常类型，确保只在相应case中执行。
 

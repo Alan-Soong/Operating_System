@@ -10,6 +10,22 @@
 #include <trap.h>
 #include <dtb.h>
 
+#define TRAP_TEST 1
+
+#ifdef TRAP_TEST
+static void trigger_trap_tests(void) {
+    cprintf("\n=== TRAP TEST: generating illegal instruction ===\n");
+    // /* 生成一条非法指令（.word 0x00000000 常被视为 illegal） */
+    asm volatile(".word 0x00000000");
+
+    cprintf("=== TRAP TEST: generating ebreak ===\n");
+    asm volatile("ebreak"); /* 触发 CAUSE_BREAKPOINT */
+
+    // /* 如果内核能返回，打印提示 */
+    cprintf("=== TRAP TEST: returned (unexpected) ===\n");
+}
+#endif
+
 int kern_init(void) __attribute__((noreturn));
 void grade_backtrace(void);
 
@@ -31,6 +47,10 @@ int kern_init(void) {
     pmm_init();  // init physical memory management
 
     idt_init();  // init interrupt descriptor table
+
+    #ifdef TRAP_TEST
+        trigger_trap_tests();
+    #endif
 
     clock_init();   // init clock interrupt
     intr_enable();  // enable irq interrupt
