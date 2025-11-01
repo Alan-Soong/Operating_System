@@ -40,15 +40,16 @@ physcial memory map:
 check_alloc_page() succeeded!
 satp virtual address: 0xffffffffc0205000
 satp physical address: 0x0000000080205000
+++ setup timer interrupts
 
 === TRAP TEST: generating illegal instruction ===
-Illegal instruction caught at 0xc02000a0, epc = 0xffffffffc02000a0
+Illegal instruction caught at 0xc02000a8, epc = 0xffffffffc02000a8
 Exception type:Illegal instruction
 === TRAP TEST: generating ebreak ===
-eBreak caught at 0xc02000b0, epc = 0xffffffffc02000b0
+eBreak caught at 0xc02000b8, epc = 0xffffffffc02000b8
 Exception type:Breakpoint
 === TRAP TEST: returned (unexpected) ===
-++ setup timer interrupts
+
 100 ticks
 100 ticks
 100 ticks
