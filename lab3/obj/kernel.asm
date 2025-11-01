@@ -116,31 +116,30 @@ ffffffffc020008c:	6ea010ef          	jal	ra,ffffffffc0201776 <pmm_init>
 
     idt_init();  // init interrupt descriptor table
 ffffffffc0200090:	7d4000ef          	jal	ra,ffffffffc0200864 <idt_init>
-    cprintf("\n=== TRAP TEST: generating illegal instruction ===\n");
-ffffffffc0200094:	00002517          	auipc	a0,0x2
-ffffffffc0200098:	e7450513          	addi	a0,a0,-396 # ffffffffc0201f08 <etext+0x4>
-ffffffffc020009c:	066000ef          	jal	ra,ffffffffc0200102 <cprintf>
-ffffffffc02000a0:	0000                	unimp
-ffffffffc02000a2:	0000                	unimp
-    cprintf("=== TRAP TEST: generating ebreak ===\n");
-ffffffffc02000a4:	00002517          	auipc	a0,0x2
-ffffffffc02000a8:	e9c50513          	addi	a0,a0,-356 # ffffffffc0201f40 <etext+0x3c>
-ffffffffc02000ac:	056000ef          	jal	ra,ffffffffc0200102 <cprintf>
-    asm volatile("ebreak"); /* 触发 CAUSE_BREAKPOINT */
-ffffffffc02000b0:	9002                	ebreak
-    cprintf("=== TRAP TEST: returned (unexpected) ===\n");
-ffffffffc02000b2:	00002517          	auipc	a0,0x2
-ffffffffc02000b6:	eb650513          	addi	a0,a0,-330 # ffffffffc0201f68 <etext+0x64>
-ffffffffc02000ba:	048000ef          	jal	ra,ffffffffc0200102 <cprintf>
-
-    #ifdef TRAP_TEST
-        trigger_trap_tests();
-    #endif
 
     clock_init();   // init clock interrupt
-ffffffffc02000be:	39a000ef          	jal	ra,ffffffffc0200458 <clock_init>
+ffffffffc0200094:	3c4000ef          	jal	ra,ffffffffc0200458 <clock_init>
     intr_enable();  // enable irq interrupt
-ffffffffc02000c2:	796000ef          	jal	ra,ffffffffc0200858 <intr_enable>
+ffffffffc0200098:	7c0000ef          	jal	ra,ffffffffc0200858 <intr_enable>
+    cprintf("\n=== TRAP TEST: generating illegal instruction ===\n");
+ffffffffc020009c:	00002517          	auipc	a0,0x2
+ffffffffc02000a0:	e6c50513          	addi	a0,a0,-404 # ffffffffc0201f08 <etext+0x4>
+ffffffffc02000a4:	05e000ef          	jal	ra,ffffffffc0200102 <cprintf>
+ffffffffc02000a8:	0000                	unimp
+ffffffffc02000aa:	0000                	unimp
+    cprintf("=== TRAP TEST: generating ebreak ===\n");
+ffffffffc02000ac:	00002517          	auipc	a0,0x2
+ffffffffc02000b0:	e9450513          	addi	a0,a0,-364 # ffffffffc0201f40 <etext+0x3c>
+ffffffffc02000b4:	04e000ef          	jal	ra,ffffffffc0200102 <cprintf>
+    asm volatile("ebreak"); /* 触发 CAUSE_BREAKPOINT */
+ffffffffc02000b8:	9002                	ebreak
+    cprintf("=== TRAP TEST: returned (unexpected) ===\n\n");
+ffffffffc02000ba:	00002517          	auipc	a0,0x2
+ffffffffc02000be:	eae50513          	addi	a0,a0,-338 # ffffffffc0201f68 <etext+0x64>
+ffffffffc02000c2:	040000ef          	jal	ra,ffffffffc0200102 <cprintf>
+    #ifdef TRAP_TEST
+        lab3_switch_tests();
+    #endif
 
     /* do nothing */
     while (1)
@@ -688,7 +687,7 @@ ffffffffc020043a:	8522                	mv	a0,s0
 ffffffffc020043c:	ca7ff0ef          	jal	ra,ffffffffc02000e2 <vcprintf>
     cprintf("\n");
 ffffffffc0200440:	00002517          	auipc	a0,0x2
-ffffffffc0200444:	b5050513          	addi	a0,a0,-1200 # ffffffffc0201f90 <etext+0x8c>
+ffffffffc0200444:	c4050513          	addi	a0,a0,-960 # ffffffffc0202080 <etext+0x17c>
 ffffffffc0200448:	cbbff0ef          	jal	ra,ffffffffc0200102 <cprintf>
     va_end(ap);
 

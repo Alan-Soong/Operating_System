@@ -13,7 +13,7 @@
 #define TRAP_TEST 1
 
 #ifdef TRAP_TEST
-static void trigger_trap_tests(void) {
+static void lab3_switch_tests(void) {
     cprintf("\n=== TRAP TEST: generating illegal instruction ===\n");
     // /* 生成一条非法指令（.word 0x00000000 常被视为 illegal） */
     asm volatile(".word 0x00000000");
@@ -22,7 +22,7 @@ static void trigger_trap_tests(void) {
     asm volatile("ebreak"); /* 触发 CAUSE_BREAKPOINT */
 
     // /* 如果内核能返回，打印提示 */
-    cprintf("=== TRAP TEST: returned (unexpected) ===\n");
+    cprintf("=== TRAP TEST: returned (unexpected) ===\n\n");
 }
 #endif
 
@@ -48,12 +48,12 @@ int kern_init(void) {
 
     idt_init();  // init interrupt descriptor table
 
-    #ifdef TRAP_TEST
-        trigger_trap_tests();
-    #endif
-
     clock_init();   // init clock interrupt
     intr_enable();  // enable irq interrupt
+
+    #ifdef TRAP_TEST
+        lab3_switch_tests();
+    #endif
 
     /* do nothing */
     while (1)
