@@ -105,9 +105,20 @@ alloc_proc(void)
          *       char name[PROC_NAME_LEN + 1];               // Process name
          */
         memset(proc, 0, sizeof(struct proc_struct));
-        proc->state = PROC_UNINIT;  // 设置为未初始化状态
-        proc->pid = -1;             // 尚未分配 PID
-        proc->pgdir = boot_pgdir_pa; // 内核线程共享内核页表
+        
+        // 初始化所有字段
+        proc->state = PROC_UNINIT;      // 进程状态：未初始化
+        proc->pid = -1;                 // 进程ID：-1表示未分配
+        proc->runs = 0;                 // 运行次数：初始为0
+        proc->kstack = 0;               // 内核栈：初始为0
+        proc->need_resched = 0;         // 不需要重新调度
+        proc->parent = NULL;            // 父进程：空
+        proc->mm = NULL;                // 内存管理：空（内核线程）
+        memset(&(proc->context), 0, sizeof(struct context));  // 上下文清零
+        proc->tf = NULL;                // 陷阱帧：空
+        proc->pgdir = boot_pgdir_pa;    // 页目录：使用内核页表
+        proc->flags = 0;                // 进程标志：0
+        memset(proc->name, 0, PROC_NAME_LEN + 1);  // 进程名清零
         
     }
     return proc;
