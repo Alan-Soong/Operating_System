@@ -199,7 +199,7 @@ void proc_run(struct proc_struct *proc)
          *   lsatp():                   Modify the value of satp register
          *   switch_to():              Context switching between two processes
          */
-bool intr_flag;
+        bool intr_flag;
         struct proc_struct *prev = current; // 保存当前进程 (from)
         
         // 1. 禁用中断，保存中断状态
