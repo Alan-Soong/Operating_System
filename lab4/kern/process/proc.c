@@ -375,11 +375,16 @@ int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf)
     // 4. 调用 copy_thread 设置 trapframe 和 context
     copy_thread(proc, stack, tf);
 
-    // 5. 将 proc_struct 插入 hash_list 和 proc_list
-    proc->pid = get_pid(); // 获取一个唯一的 PID
-    hash_proc(proc);       // 加入哈希表，用于 find_proc
-    list_add_before(&proc_list, &(proc->list_link)); // 加入全局进程链表
-    nr_process++;
+    bool intr_flag;
+    local_intr_save(intr_flag);		// 屏蔽本地CPU中断，保存之前中断的使能状态
+    {
+    	// 5. 将 proc_struct 插入 hash_list 和 proc_list
+    	proc->pid = get_pid(); // 获取一个唯一的 PID
+    	hash_proc(proc);       // 加入哈希表，用于 find_proc
+    	list_add_before(&proc_list, &(proc->list_link)); // 加入全局进程链表
+    	nr_process++;
+    }
+    local_intr_restore(intr_flag);	// 根据存储的flag恢复之前中断使能状态
 
     // 6. 调用 wakeup_proc 使新进程可被调度
     wakeup_proc(proc); // 将 proc->state 设置为 PROC_RUNNABLE
