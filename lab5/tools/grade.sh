@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Create logs directory
+mkdir -p logs
+
 verbose=false
 if [ "x$1" = "x-v" ]; then
     verbose=true
@@ -185,7 +188,7 @@ build_run() {
 
     show_time
 
-    cp $qemu_out .`echo $tag | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g'`.log
+    cp $qemu_out logs/`echo $tag | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g'`.log
 }
 
 check_result() {

@@ -15,6 +15,7 @@
 #include <sched.h>
 #include <sync.h>
 #include <sbi.h>
+#include <proc.h>
 
 #define TICK_NUM 100
 
@@ -127,6 +128,13 @@ void interrupt_handler(struct trapframe *tf)
          *(3)当计数器加到100的时候，我们会输出一个`100ticks`表示我们触发了100次时钟中断，同时打印次数（num）加一
          * (4)判断打印次数，当打印次数为10时，调用<sbi.h>中的关机函数关机
          */
+
+        /* LAB5 GRADE   YOUR CODE :  2311101*/
+        /* 时间片轮转： 
+        *(1) 设置下一次时钟中断（clock_set_next_event）
+        *(2) ticks 计数器自增
+        *(3) 每 TICK_NUM 次中断（如 100 次），进行判断当前是否有进程正在运行，如果有则标记该进程需要被重新调度（current->need_resched）
+        */
         clock_set_next_event();
         if (++ticks % TICK_NUM == 0) {
             print_ticks();
@@ -135,6 +143,9 @@ void interrupt_handler(struct trapframe *tf)
             if (print_count == 10) {
                 sbi_shutdown(); // 关机
             }
+        }
+	    if (current != NULL) {
+            current->need_resched = 1;
         }
         break;
     case IRQ_H_TIMER:
@@ -214,12 +225,21 @@ void exception_handler(struct trapframe *tf)
         break;
     case CAUSE_FETCH_PAGE_FAULT:
         cprintf("Instruction page fault\n");
+        if ((ret = do_pgfault(current->mm, 0, tf->tval)) != 0) {
+            do_exit(-E_FAULT);
+        }
         break;
     case CAUSE_LOAD_PAGE_FAULT:
         cprintf("Load page fault\n");
+        if ((ret = do_pgfault(current->mm, 0, tf->tval)) != 0) {
+            do_exit(-E_FAULT);
+        }
         break;
     case CAUSE_STORE_PAGE_FAULT:
         cprintf("Store/AMO page fault\n");
+        if ((ret = do_pgfault(current->mm, 1, tf->tval)) != 0) {
+            do_exit(-E_FAULT);
+        }
         break;
     default:
         print_trapframe(tf);

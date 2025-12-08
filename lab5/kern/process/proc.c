@@ -121,12 +121,14 @@ alloc_proc(void)
         proc->flags = 0;                // 进程标志：0
         memset(proc->name, 0, PROC_NAME_LEN + 1);  // 进程名清零
 
-        // LAB5 YOUR CODE : (update LAB4 steps)
+        // LAB5 YOUR CODE : (update LAB4 steps) 2311100
         /*
          * below fields(add in LAB5) in proc_struct need to be initialized
          *       uint32_t wait_state;                        // waiting state
          *       struct proc_struct *cptr, *yptr, *optr;     // relations between processes
          */
+        proc->wait_state = 0;
+        proc->cptr = proc->yptr = proc->optr = NULL;
     }
     return proc;
 }
@@ -473,7 +475,9 @@ int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf)
         goto fork_out;
     }
     // 建立父子关系
-    proc->parent = current;
+    proc->parent = current; 
+    current->wait_state = 0;
+    // assert(current->wait_state == 0); // 确保当前进程的 wait_state 为 0
 
     // 2. 调用 setup_kstack 分配内核栈
     if (setup_kstack(proc) != 0) {
@@ -494,8 +498,9 @@ int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf)
     	// 5. 将 proc_struct 插入 hash_list 和 proc_list
     	proc->pid = get_pid(); // 获取一个唯一的 PID
     	hash_proc(proc);       // 加入哈希表，用于 find_proc
-    	list_add_before(&proc_list, &(proc->list_link)); // 加入全局进程链表
-    	nr_process++;
+    	// list_add_before(&proc_list, &(proc->list_link)); // 加入全局进程链表
+    	// nr_process++;
+        set_links(proc);
     }
     local_intr_restore(intr_flag);	// 根据存储的flag恢复之前中断使能状态
 
@@ -505,7 +510,7 @@ int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf)
     // 7. 设置返回值为子进程的 pid
     ret = proc->pid;
 
-    // LAB5 YOUR CODE : (update LAB4 steps)
+    // LAB5 YOUR CODE : (update LAB4 steps) 2311100
     // TIPS: you should modify your written code in lab4(step1 and step5), not add more code.
     /* Some Functions
      *    set_links:  set the relation links of process.  ALSO SEE: remove_links:  lean the relation links of process
@@ -612,7 +617,7 @@ load_icode(unsigned char *binary, size_t size)
         goto bad_pgdir_cleanup_mm;
     }
     //(3) copy TEXT/DATA section, build BSS parts in binary to memory space of process
-    struct Page *page;
+    struct Page *page = NULL;
     //(3.1) get the file header of the bianry program (ELF format)
     struct elfhdr *elf = (struct elfhdr *)binary;
     //(3.2) get the entry of the program section headers of the bianry program (ELF format)
@@ -740,7 +745,7 @@ load_icode(unsigned char *binary, size_t size)
     // Keep sstatus
     uintptr_t sstatus = tf->status;
     memset(tf, 0, sizeof(struct trapframe));
-    /* LAB5:EXERCISE1 YOUR CODE
+    /* LAB5:EXERCISE1 YOUR CODE: 2311101
      * should set tf->gpr.sp, tf->epc, tf->status
      * NOTICE: If we set trapframe correctly, then the user level process can return to USER MODE from kernel. So
      *          tf->gpr.sp should be user stack top (the value of sp)
@@ -748,6 +753,10 @@ load_icode(unsigned char *binary, size_t size)
      *          tf->status should be appropriate for user program (the value of sstatus)
      *          hint: check meaning of SPP, SPIE in SSTATUS, use them by SSTATUS_SPP, SSTATUS_SPIE(defined in risv.h)
      */
+
+    tf->gpr.sp = USTACKTOP;               // 设置用户栈顶指针
+    tf->epc = elf->e_entry;               // 设置程序入口点
+    tf->status = (read_csr(sstatus) & ~SSTATUS_SPP) | SSTATUS_SPIE;  // 设置状态寄存器
 
     ret = 0;
 out:

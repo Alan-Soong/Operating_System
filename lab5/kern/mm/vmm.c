@@ -34,8 +34,27 @@
      void check_pgfault(void);
 */
 
+volatile unsigned int pgfault_num = 0;
+
 static void check_vmm(void);
 static void check_vma_struct(void);
+static void check_pgfault(void);
+
+// setup_pgdir - alloc one page as PDT
+static int
+setup_pgdir(struct mm_struct *mm)
+{
+    struct Page *page;
+    if ((page = alloc_page()) == NULL)
+    {
+        return -E_NO_MEM;
+    }
+    pde_t *pgdir = page2kva(page);
+    memcpy(pgdir, boot_pgdir_va, PGSIZE);
+
+    mm->pgdir = pgdir;
+    return 0;
+}
 
 // mm_create -  alloc a mm_struct & initialize it.
 struct mm_struct *
@@ -56,6 +75,87 @@ mm_create(void)
         lock_init(&(mm->mm_lock));
     }
     return mm;
+}
+
+// do_pgfault - handle the page fault
+int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
+{
+    int ret = -E_INVAL;
+    // try to find a vma which include addr
+    struct vma_struct *vma = find_vma(mm, addr);
+
+    pgfault_num++;
+    // If the addr is in the range of a mm's vma?
+    if (vma == NULL || vma->vm_start > addr)
+    {
+        goto failed;
+    }
+
+    /* IF (write an existed addr ) OR
+     *    (write an non_existed addr && addr is writable) OR
+     *    (read  an non_existed addr && addr is readable)
+     * THEN
+     *    continue process
+     */
+    uint32_t perm = PTE_U;
+    if (vma->vm_flags & VM_READ)
+    {
+        perm |= PTE_R;
+    }
+    if (vma->vm_flags & VM_WRITE)
+    {
+        perm |= (PTE_W | PTE_R);
+    }
+    if (vma->vm_flags & VM_EXEC)
+    {
+        perm |= PTE_X;
+    }
+    addr = ROUNDDOWN(addr, PGSIZE);
+
+    ret = -E_NO_MEM;
+
+    pte_t *ptep;
+    /*
+     * Maybe you want help comment, BELOW comments can help you finish the
+     * code first.
+     * Some Useful MACROs and DEFINEs, you can use them in below implementation.
+     * MACROs or Functions:
+     *   get_pte : get an pte and return the kernel virtual address of this pte
+     *             for linear address la
+     *             if the PT contians this pte didn't exist, alloc a page for PT
+     *   pgdir_alloc_page : call alloc_page & page_insert functions to
+     *                      allocate a page size memory & setup an addr map
+     *                      pa<->la with linear address la and the PDT pgdir
+     * DEFINES:
+     *   VM_WRITE  : If vma->vm_flags & VM_WRITE == 1/0 :
+     *               means the vma is writable/non writable
+     *   PTE_W           0x002                   // page table/directory entry
+     *                                          flags bit : Writeable
+     *   PTE_U           0x004                   // page table/directory entry
+     *                                          flags bit : User can access
+     * struct mm_struct *mm  : current mm_struct
+     */
+
+    if ((ptep = get_pte(mm->pgdir, addr, 1)) == NULL)
+    {
+        goto failed;
+    }
+    if (*ptep == 0)
+    {
+        // try to alloc a page, and set the right pte with perm
+        if (pgdir_alloc_page(mm->pgdir, addr, perm) == NULL)
+        {
+            goto failed;
+        }
+    }
+    else
+    {
+        // if this pte is valid, do nothing
+        ret = 0;
+    }
+    ret = 0;
+failed:
+    return ret;
 }
 
 // vma_create - alloc a vma_struct & initialize it. (addr range: vm_start~vm_end)
@@ -278,7 +378,7 @@ check_vmm(void)
     // size_t nr_free_pages_store = nr_free_pages();
 
     check_vma_struct();
-    // check_pgfault();
+    check_pgfault();
 
     cprintf("check_vmm() succeeded.\n");
 }
@@ -349,6 +449,54 @@ check_vma_struct(void)
 
     cprintf("check_vma_struct() succeeded!\n");
 }
+
+static void
+check_pgfault(void)
+{
+    // size_t nr_free_pages_store = nr_free_pages();
+    // size_t kernel_allocated_store = kallocated();
+
+    struct mm_struct *mm = mm_create();
+    assert(mm != NULL);
+
+    // setup pgdir for mm
+    if (setup_pgdir(mm) != 0)
+    {
+        panic("setup_pgdir failed\n");
+    }
+
+    struct vma_struct *vma = vma_create(0, PTSIZE, VM_WRITE);
+    assert(vma != NULL);
+
+    insert_vma_struct(mm, vma);
+
+    uintptr_t addr = 0x100;
+    assert(find_vma(mm, addr) == vma);
+
+    int ret = 0;
+    ret = do_pgfault(mm, 0, addr);
+    assert(ret == 0);
+
+    // check the correctness of page table
+    pte_t *ptep = get_pte(mm->pgdir, addr, 0);
+    assert(ptep != NULL);
+    assert((*ptep & PTE_U) != 0);
+    assert((*ptep & PTE_W) != 0);
+
+    addr = 0x1000;
+    ret = do_pgfault(mm, 0, addr);
+    assert(ret == 0);
+
+    ptep = get_pte(mm->pgdir, addr, 0);
+    assert(ptep != NULL);
+    assert((*ptep & PTE_U) != 0);
+    assert((*ptep & PTE_W) != 0);
+
+    mm_destroy(mm);
+
+    cprintf("check_pgfault() succeeded!\n");
+}
+
 bool user_mem_check(struct mm_struct *mm, uintptr_t addr, size_t len, bool write)
 {
     if (mm != NULL)
