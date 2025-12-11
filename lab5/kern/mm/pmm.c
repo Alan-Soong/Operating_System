@@ -448,31 +448,30 @@ int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
             // assert(ret == 0);
             
             if (share) {
-                uint32_t perm_shared = (uint32_t)(*ptep & PTE_USER);
-                /* clear write permission for COW */
-                perm_shared &= ~PTE_W;
+                uint32_t perm_shared = (uint32_t)(*ptep & PTE_USER) & ~PTE_W;
 
-                /* update source pte: clear write bit (keep V and user bits)
-                 * Note: this keeps the original mapping but without write.
+                /*
+                 * Important ordering to avoid a race:
+                 * 1) first insert the child mapping (page_insert will inc ref),
+                 * 2) then clear parent's write bit and flush its TLB entry.
+                 * If we clear parent's write bit before increasing refcount,
+                 * a concurrent write could fault and see refcount==1 and
+                 * incorrectly enable write on the parent, breaking COW.
                  */
+                if (page_insert(to, page, start, perm_shared) != 0)
+                {
+                    // cprintf("copy_range: page_insert failed for addr 0x%08x\n", start);
+                    return -E_NO_MEM;
+                }
+
+                /* now update source pte: clear write bit and flush TLB */
                 *ptep = (*ptep & ~PTE_W);
                 tlb_invalidate(from, start);
 
-                /* insert shared mapping into destination (page_insert will inc ref) */
-                if ((nptep = get_pte(to, start, 1)) == NULL)
-                {
-                    return -E_NO_MEM;
-                }
-                /* use page_insert to increment ref and set pte */
-                if (page_insert(to, page, start, perm_shared) != 0)
-                {
-                    cprintf("copy_range: page_insert failed for addr 0x%08x\n", start);
-                    return -E_NO_MEM;
-                }
                 if (current != NULL) {
                     pte_t *newpte = get_pte(to, start, 0);
-                    cprintf("copy_range: after insert pid %d addr 0x%08x newpte 0x%08x ref %d\n",
-                            current->pid, start, newpte ? (uint32_t)(*newpte) : 0, page_ref(page));
+                    // cprintf("copy_range: after insert pid %d addr 0x%08x newpte 0x%08x ref %d\n",
+                            // current->pid, start, newpte ? (uint32_t)(*newpte) : 0, page_ref(page));
                 }
             } else {
                 /* Eager-copy path (original LAB5 behaviour): allocate a new page

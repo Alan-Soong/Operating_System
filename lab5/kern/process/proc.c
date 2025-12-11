@@ -426,6 +426,10 @@ copy_thread(struct proc_struct *proc, uintptr_t esp, struct trapframe *tf)
     proc->tf->gpr.a0 = 0;
     proc->tf->gpr.sp = (esp == 0) ? (uintptr_t)proc->tf : esp;
 
+    /* Debug: print trapframe info to detect corruption during fork/COW */
+    // cprintf("copy_thread: child tf epc=0x%08lx sp=0x%08lx status=0x%08lx a0=0x%08lx\n",
+            // proc->tf->epc, proc->tf->gpr.sp, proc->tf->status, proc->tf->gpr.a0);
+
     proc->context.ra = (uintptr_t)forkret;
     proc->context.sp = (uintptr_t)(proc->tf);
 }

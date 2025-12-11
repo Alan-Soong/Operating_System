@@ -88,7 +88,7 @@ int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
     // If the addr is in the range of a mm's vma?
     if (vma == NULL || vma->vm_start > addr)
     {
-        cprintf("do_pgfault: invalid vma for addr 0x%08x\n", addr);
+        // cprintf("do_pgfault: invalid vma for addr 0x%08x\n", addr);
         goto failed;
     }
 
@@ -139,7 +139,7 @@ int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
 
     if ((ptep = get_pte(mm->pgdir, addr, 1)) == NULL)
     {
-        cprintf("do_pgfault: get_pte returned NULL for addr 0x%08x\n", addr);
+        // cprintf("do_pgfault: get_pte returned NULL for addr 0x%08x\n", addr);
         goto failed;
     }
 
@@ -157,7 +157,7 @@ int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
         /* Page is present. Handle COW on write faults: */
         if (error_code == 1)
         {
-            cprintf("do_pgfault: write fault for addr 0x%08x\n", addr);
+            // cprintf("do_pgfault: write fault for addr 0x%08x\n", addr);
             /* store/AMO fault -> write attempted */
             if (*ptep & PTE_W)
             {
@@ -169,7 +169,7 @@ int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
                 struct Page *page = pte2page(*ptep);
                 if (page_ref(page) > 1)
                 {
-                    cprintf("do_pgfault: shared page detected for addr 0x%08x\n", addr);
+                    // cprintf("do_pgfault: shared page detected for addr 0x%08x\n", addr);
                     /* shared: allocate a private copy */
                     struct Page *npage = alloc_page();
                     if (npage == NULL)
@@ -189,7 +189,7 @@ int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
                     /* sole owner: just enable write */
                     *ptep |= PTE_W;
                     tlb_invalidate(mm->pgdir, addr);
-                    cprintf("do_pgfault: enabled write for addr 0x%08x\n", addr);
+                    // cprintf("do_pgfault: enabled write for addr 0x%08x\n", addr);
                     ret = 0;
                 }
             }
@@ -364,7 +364,7 @@ int dup_mmap(struct mm_struct *to, struct mm_struct *from)
 
         insert_vma_struct(to, nvma);
 
-        bool share = 0;
+        bool share = 1;
         if (copy_range(to->pgdir, from->pgdir, vma->vm_start, vma->vm_end, share) != 0)
         {
             return -E_NO_MEM;
