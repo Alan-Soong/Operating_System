@@ -398,12 +398,23 @@ int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
             }
             uint32_t perm = (*ptep & PTE_USER);
             // get page from ptep
+
+            /* Implement Copy-On-Write (COW): instead of copying page content now,
+             * map the same physical page into the target process as read-only
+             * (clear write permission) and clear write permission in the source
+             * mapping as well. Increment reference count via page_insert.
+             */
+
             struct Page *page = pte2page(*ptep);
-            // alloc a page for process B
-            struct Page *npage = alloc_page();
             assert(page != NULL);
-            assert(npage != NULL);
-            int ret = 0;
+            /* Debug: log copy/share action (optional) */
+            // if (current != NULL) {
+            //     cprintf("copy_range: pid %d addr 0x%08x pte 0x%08x ref %d\n",
+            //             current->pid, start, (uint32_t)(*ptep), page_ref(page));
+            // } else {
+            //     cprintf("copy_range: kernel ctx addr 0x%08x pte 0x%08x ref %d\n",
+            //             start, (uint32_t)(*ptep), page_ref(page));
+            // }
             /* LAB5:EXERCISE2 YOUR CODE: 2311095
              * replicate content of page to npage, build the map of phy addr of
              * nage with the linear addr start
@@ -423,10 +434,10 @@ int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
              * (4) build the map of phy addr of  nage with the linear addr start
              */
             
-            void *src_kvaddr = page2kva(page);
-            void *dst_kvaddr = page2kva(npage);
-            memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
-            ret = page_insert(to, npage, start, perm);
+            // void *src_kvaddr = page2kva(page);
+            // void *dst_kvaddr = page2kva(npage);
+            // memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
+            // ret = page_insert(to, npage, start, perm);
             // if (ret != 0) {
             //     free_page(npage);
             //     return ret;
@@ -434,7 +445,52 @@ int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
             // /* record the mapped linear address in the page metadata */
             // npage->pra_vaddr = start;
 
-            assert(ret == 0);
+            // assert(ret == 0);
+            
+            if (share) {
+                uint32_t perm_shared = (uint32_t)(*ptep & PTE_USER);
+                /* clear write permission for COW */
+                perm_shared &= ~PTE_W;
+
+                /* update source pte: clear write bit (keep V and user bits)
+                 * Note: this keeps the original mapping but without write.
+                 */
+                *ptep = (*ptep & ~PTE_W);
+                tlb_invalidate(from, start);
+
+                /* insert shared mapping into destination (page_insert will inc ref) */
+                if ((nptep = get_pte(to, start, 1)) == NULL)
+                {
+                    return -E_NO_MEM;
+                }
+                /* use page_insert to increment ref and set pte */
+                if (page_insert(to, page, start, perm_shared) != 0)
+                {
+                    cprintf("copy_range: page_insert failed for addr 0x%08x\n", start);
+                    return -E_NO_MEM;
+                }
+                if (current != NULL) {
+                    pte_t *newpte = get_pte(to, start, 0);
+                    cprintf("copy_range: after insert pid %d addr 0x%08x newpte 0x%08x ref %d\n",
+                            current->pid, start, newpte ? (uint32_t)(*newpte) : 0, page_ref(page));
+                }
+            } else {
+                /* Eager-copy path (original LAB5 behaviour): allocate a new page
+                 * and copy contents into it, then map into destination.
+                 */
+                struct Page *npage = alloc_page();
+                assert(npage != NULL);
+                void *src_kvaddr = page2kva(page);
+                void *dst_kvaddr = page2kva(npage);
+                memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
+                int ret = page_insert(to, npage, start, perm);
+                // if (ret != 0) {
+                //     free_page(npage);
+                //     return ret;
+                // }
+                // npage->pra_vaddr = start;
+                assert(ret == 0);
+            }
         }
         start += PGSIZE;
     } while (start != 0 && start < end);

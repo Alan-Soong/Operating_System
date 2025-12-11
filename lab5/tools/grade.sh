@@ -458,6 +458,14 @@ run_test -prog 'forktest'   -check default_check                                
     !   'wait got too many'                                     \
     ! - 'user panic at .*'
 
+pts=10
+
+run_test -prog 'cowtest' -check default_check \
+        'kernel_execve: pid = 2, name = "cowtest".' \
+        'child shared=100' \
+        'parent shared=42' \
+        'cowtest pass.' \
+    ! - 'user panic at .*'
 
 ## print final-score
 show_final

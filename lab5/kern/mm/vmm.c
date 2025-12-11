@@ -88,6 +88,7 @@ int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
     // If the addr is in the range of a mm's vma?
     if (vma == NULL || vma->vm_start > addr)
     {
+        cprintf("do_pgfault: invalid vma for addr 0x%08x\n", addr);
         goto failed;
     }
 
@@ -138,22 +139,67 @@ int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
 
     if ((ptep = get_pte(mm->pgdir, addr, 1)) == NULL)
     {
+        cprintf("do_pgfault: get_pte returned NULL for addr 0x%08x\n", addr);
         goto failed;
     }
+
     if (*ptep == 0)
     {
-        // try to alloc a page, and set the right pte with perm
+        /* No physical page mapped yet: allocate one according to vma perms */
         if (pgdir_alloc_page(mm->pgdir, addr, perm) == NULL)
         {
             goto failed;
         }
+        ret = 0;
     }
     else
     {
-        // if this pte is valid, do nothing
-        ret = 0;
+        /* Page is present. Handle COW on write faults: */
+        if (error_code == 1)
+        {
+            cprintf("do_pgfault: write fault for addr 0x%08x\n", addr);
+            /* store/AMO fault -> write attempted */
+            if (*ptep & PTE_W)
+            {
+                /* writable already (unexpected), allow */
+                ret = 0;
+            }
+            else
+            {
+                struct Page *page = pte2page(*ptep);
+                if (page_ref(page) > 1)
+                {
+                    cprintf("do_pgfault: shared page detected for addr 0x%08x\n", addr);
+                    /* shared: allocate a private copy */
+                    struct Page *npage = alloc_page();
+                    if (npage == NULL)
+                    {
+                        goto failed;
+                    }
+                    memcpy(page2kva(npage), page2kva(page), PGSIZE);
+                    if (page_insert(mm->pgdir, npage, addr, perm) != 0)
+                    {
+                        free_page(npage);
+                        goto failed;
+                    }
+                    ret = 0;
+                }
+                else
+                {
+                    /* sole owner: just enable write */
+                    *ptep |= PTE_W;
+                    tlb_invalidate(mm->pgdir, addr);
+                    cprintf("do_pgfault: enabled write for addr 0x%08x\n", addr);
+                    ret = 0;
+                }
+            }
+        }
+        else
+        {
+            /* load/fetch fault on present page: nothing to do */
+            ret = 0;
+        }
     }
-    ret = 0;
 failed:
     return ret;
 }
