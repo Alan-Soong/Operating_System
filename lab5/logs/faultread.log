@@ -31,10 +31,10 @@ DTB init completed
 
 Special kernel symbols:
   entry  0xc020004a (virtual)
-  etext  0xc0205a58 (virtual)
-  edata  0xc02a63b8 (virtual)
-  end    0xc02aa86c (virtual)
-Kernel executable memory footprint: 683KB
+  etext  0xc0205c66 (virtual)
+  edata  0xc02b0b90 (virtual)
+  end    0xc02b5044 (virtual)
+Kernel executable memory footprint: 724KB
 memory management: default_pmm_manager
 physcial memory map:
   memory: 0x08000000, [0x80000000, 0x87ffffff].
@@ -51,6 +51,7 @@ check_vmm() succeeded.
 kernel_execve: pid = 2, name = "faultread".
 Breakpoint
 Load page fault
+do_pgfault: invalid vma for addr 0x00000000
 all user-mode processes have quit.
 init check memory pass.
 kernel panic at kern/process/proc.c:544:
