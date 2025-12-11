@@ -31,7 +31,7 @@ DTB init completed
 
 Special kernel symbols:
   entry  0xc020004a (virtual)
-  etext  0xc0205c66 (virtual)
+  etext  0xc0205bcc (virtual)
   edata  0xc02b0b90 (virtual)
   end    0xc02b5044 (virtual)
 Kernel executable memory footprint: 724KB
@@ -50,11 +50,14 @@ check_vmm() succeeded.
 ++ setup timer interrupts
 kernel_execve: pid = 2, name = "cowtest".
 Breakpoint
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
 child shared=100
 parent shared=42
 cowtest pass.
 all user-mode processes have quit.
 init check memory pass.
-kernel panic at kern/process/proc.c:544:
+kernel panic at kern/process/proc.c:548:
     initproc exit.
 
