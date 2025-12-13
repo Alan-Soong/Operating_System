@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <ulib.h>
 
-/* simple Copy-On-Write test
- * - use a global variable in .data so it's mapped in user memory
- * - parent sets shared=42, forks; child writes 100 and prints; parent waits and checks value
+/* enhanced Copy-On-Write test
+ * - test global variable and array in .data/.bss
+ * - parent sets values, forks; child modifies and prints; parent checks isolation
  */
 static volatile int shared = 42;
+static volatile int array[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
 int main(void) {
     int pid = fork();
@@ -14,20 +15,21 @@ int main(void) {
         return -1;
     }
     if (pid == 0) {
-        /* child */
+        /* child: modify shared and array */
         shared = 100;
+        array[0] = 999;
         cprintf("child shared=%d\n", shared);
         exit(0);
     } else {
-        /* parent */
+        /* parent: wait and check */
         int w = wait();
         (void)w;
         cprintf("parent shared=%d\n", shared);
-        if (shared == 42) {
+        if (shared == 42 && array[0] == 0) {
             cprintf("cowtest pass.\n");
             return 0;
         } else {
-            cprintf("cowtest fail: parent sees %d\n", shared);
+            cprintf("cowtest fail: parent sees shared=%d, array[0]=%d\n", shared, array[0]);
             return -1;
         }
     }
