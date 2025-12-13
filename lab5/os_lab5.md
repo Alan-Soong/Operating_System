@@ -201,108 +201,78 @@ UNINIT --------------> RUNNABLE <=========> RUNNING
 -----
 
 ### 扩展练习 Challenge: 实现 Copy on Write (COW)
+#### 1. 核心设计思路
+基于ucore现有虚拟内存框架，在`fork`时父子进程共享物理页（移除写权限+标记COW），首次写操作触发缺页异常时完成页面拷贝，核心依赖**页引用计数**和**缺页异常处理**实现。
 
-这是一个 Big Challenge。要在 ucore 中实现 COW，你需要修改内存复制逻辑和页错误处理逻辑。
+#### 2. 有限状态自动机（COW页状态转换）
+| 状态 | 触发条件 | 转换目标 | 操作 |
+|------|----------|----------|------|
+| 初始态（父进程独占页） | fork创建子进程 | 共享态（COW） | 1. 清除PTE_W（写权限）；2. 页引用计数+1；3. 子进程映射同物理页并标记COW |
+| 共享态（COW） | 进程首次写页且refcount>1 | 独占态（新页） | 1. 分配新物理页；2. 拷贝原页数据；3. 当前进程PTE指向新页并恢复写权限；4. 原页refcount-1；5. 刷新TLB |
+| 共享态（COW） | 进程首次写页且refcount=1 | 独占态（原页） | 1. 恢复PTE_W；2. 清除COW标记；3. 刷新TLB |
+| 共享态/独占态 | 进程退出/解除映射 | 释放态 | 1. refcount-1；2. 若refcount=0，释放物理页 |
 
-#### 1\. 设计思路
+#### 3. 关键数据结构扩展
+- **页引用计数**：复用ucore`struct Page`的`ref`字段（原子操作保护），表示物理页被多少进程共享。
+- **PTE标记**：利用PTE的保留位或复用`PTE_RSW`作为COW标记（`PTE_COW`），与`PTE_W`互斥。
 
-  * **核心**: `fork` 时不实际拷贝物理内存，而是让父子进程共享同一块物理内存。
-  * **关键点**:
-    1.  将共享的页表项（PTE）权限设置为 **只读 (Read-Only)**，同时在页表项的保留位（或软件位）中标记这是一个“COW页”。
-    2.  当父子任何一方尝试**写**这个页面时，CPU 触发 Page Fault (Exception Cause 15: Store Page Fault)。
-    3.  在 Page Fault 处理函数中，检测到是写 COW 页，则分配新物理页，拷贝数据，更新页表映射为可写 (`PTE_W`)，并取消共享。
 
-#### 2\. 代码修改部分
-
-**A. 修改 `kern/mm/pmm.c` 中的 `copy_range`**
-不要使用 `memcpy`，而是建立共享映射。
-
+#### 4. DirtyCOW漏洞模拟与修复
+##### 漏洞原理
+DirtyCOW利用COW写时拷贝的竞态：多个进程同时写COW页，绕过权限检查修改只读内存。
+##### 漏洞复现（简化版）
 ```c
-// 修改后的 copy_range (COW 版本)
-int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share) {
-    assert(start % PGSIZE == 0 && end % PGSIZE == 0);
-    assert(USER_ACCESS(start, end));
-    
-    do {
-        pte_t *ptep = get_pte(from, start, 0);
-        if (ptep == NULL) {
-            start = ROUNDDOWN(start + PTSIZE, PTSIZE);
-            continue;
-        }
-        
-        if (*ptep & PTE_V) {
-            struct Page *page = pte2page(*ptep);
-            // 只有用户可写的页才需要 COW，只读页直接共享即可
-            uint32_t perm = (*ptep & PTE_USER);
-            
-            if (perm & PTE_W) {
-                // 去掉写权限，实现只读共享
-                perm &= ~PTE_W;
-                *ptep = pte_create(page2ppn(page), PTE_V | perm);
-                tlb_invalidate(from, start); // 刷新 TLB
-            }
-            
-            // 将该物理页映射到子进程页表，使用相同的只读权限
-            // page_insert 会自动增加 page 的引用计数 (ref)
-            int ret = page_insert(to, page, start, perm);
-            if (ret != 0) return ret;
-        }
-        start += PGSIZE;
-    } while (start != 0 && start < end);
-    return 0;
-}
-```
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
 
-**B. 修改 `kern/mm/vmm.c` 中的 `do_pgfault` (你需要自己找到这个文件)**
-这是处理缺页异常的地方，需要增加对 COW 的支持。
-
-```c
-// 伪代码/参考代码逻辑，需放入 do_pgfault 函数中
-int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
-    // ... 前置检查 ...
-    
-    // 获取对应的 PTE
-    pte_t *ptep = NULL;
-    // 假设 get_pte 已经找到页表项
-    
-    // 判断是否是 COW 情况：
-    // 1. 异常原因是写错误 (Store/AMO page fault)
-    // 2. PTE 存在且有效
-    // 3. PTE 是只读的 (没有 PTE_W)
-    // 4. 但 VMA (虚拟内存区域) 标记该段内存原本是可写的 (VM_WRITE)
-    if ((error_code & 3) && (*ptep & PTE_V) && !(*ptep & PTE_W)) {
-        struct Page *page = pte2page(*ptep);
-        
-        // 如果引用计数为 1，说明只剩当前进程在用，直接恢复写权限即可
-        if (page_ref(page) == 1) {
-             *ptep |= PTE_W;
-             tlb_invalidate(mm->pgdir, addr);
-        } 
-        else {
-            // 引用计数 > 1，需要分裂 (Copy)
-            struct Page *npage = alloc_page();
-            if (npage == NULL) return -E_NO_MEM;
-            
-            // 复制数据
-            void *src_kvaddr = page2kva(page);
-            void *dst_kvaddr = page2kva(npage);
-            memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
-            
-            // 建立新映射：允许写
-            // page_insert 会处理旧 page 的 ref 减 1，新 npage 的 ref 加 1
-            page_insert(mm->pgdir, npage, addr, PTE_U | PTE_W | PTE_R | PTE_V);
-        }
-        return 0; // 处理成功
+int *shared;
+void *write_thread(void *arg) {
+    while (1) {
+        *shared = 999; // 持续写COW页
     }
-    
-    // ... 其他缺页处理 ...
+}
+
+int main() {
+    shared = malloc(4);
+    *shared = 100;
+    mprotect(shared, PGSIZE, PROT_READ); // 标记为只读
+    pid_t pid = fork();
+    if (pid == 0) {
+        pthread_t tid;
+        pthread_create(&tid, NULL, write_thread, NULL);
+        while (1) {
+            // 竞态触发：在COW拷贝前修改数据
+            printf("子进程：shared=%d\n", *shared);
+            sleep(1);
+        }
+    } else {
+        wait(NULL);
+        return 0;
+    }
 }
 ```
+##### 修复方案
+在`do_pgfault`中增加**二次校验**，加锁后重新检查引用计数和PTE状态：
+```c
+// 在do_pgfault的COW处理逻辑中
+spin_lock(&page_lock);
+// 二次校验：防止加锁前refcount已变化
+if (page_ref(old_page) != ref || !(*ptep & PTE_COW)) {
+    spin_unlock(&page_lock);
+    return -E_PERM;
+}
+// 后续拷贝/权限修改逻辑
+```
 
-#### 3\. 关于 Dirty Cow
+本实现基于ucore现有虚拟内存框架，通过`fork`时共享页+写时拷贝，减少内存冗余和`fork`开销。核心状态转换通过有限状态机明确，覆盖了COW页的创建、写触发拷贝、释放全流程。针对DirtyCOW漏洞，通过加锁和二次校验修复竞态问题，保证内存安全。测试用例验证了COW的核心功能，同时模拟了经典漏洞并给出修复方案。
+
+##### 关于 Dirty Cow
 
 Dirty Cow 漏洞源于 Linux 内核在处理 Copy-on-Write 时存在竞态条件。攻击者通过利用该漏洞，可以在只读映射被解除前的一瞬间写入数据，从而修改只读文件（如 `/etc/passwd`）。
 **在 ucore 中模拟建议**：由于 ucore 是单核且不支持抢占式内核（Lab5 阶段），很难复现真实的竞态条件。但在多核 SMP 实现中，如果在“检查引用计数”和“执行写入”之间发生了上下文切换或另一核修改了页表，就可能引入类似 Bug。
+##### **具体设计文档源码及测试样例见COW_design.md文档**
 
 ### 说明该用户程序是何时被预先加载到内存中的？与我们常用操作系统的加载有何区别，原因是什么？
 
