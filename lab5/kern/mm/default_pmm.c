@@ -75,6 +75,7 @@ default_init_memmap(struct Page *base, size_t n)
         assert(PageReserved(p));
         p->flags = p->property = 0;
         set_page_ref(p, 0);
+        p->lock = 0;
     }
     base->property = n;
     SetPageProperty(base);
@@ -148,6 +149,7 @@ default_free_pages(struct Page *base, size_t n)
         assert(!PageReserved(p) && !PageProperty(p));
         p->flags = 0;
         set_page_ref(p, 0);
+        p->lock = 0;
     }
     base->property = n;
     SetPageProperty(base);

@@ -94,6 +94,7 @@ struct Page
 {
     int ref;                    // page frame's reference counter
     uint64_t flags;             // array of flags that describe the status of the page frame
+    unsigned long lock;         // per-page spinlock (bit 0 used)
     unsigned int property;      // the num of free block, used in first fit pm manager
     list_entry_t page_link;     // free list link
     list_entry_t pra_page_link; // used for pra (page replace algorithm)

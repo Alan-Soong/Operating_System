@@ -448,7 +448,7 @@ int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
             // assert(ret == 0);
             
             if (share) {
-                uint32_t perm_shared = (uint32_t)(*ptep & PTE_USER) & ~PTE_W;
+                uint32_t perm_shared = ((uint32_t)(*ptep & PTE_USER) & ~PTE_W) | PTE_COW;
 
                 /*
                  * Important ordering to avoid a race:
@@ -465,7 +465,7 @@ int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
                 }
 
                 /* now update source pte: clear write bit and flush TLB */
-                *ptep = (*ptep & ~PTE_W);
+                *ptep = (*ptep & ~PTE_W) | PTE_COW;
                 tlb_invalidate(from, start);
 
                 if (current != NULL) {

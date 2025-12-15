@@ -143,9 +143,9 @@ void interrupt_handler(struct trapframe *tf)
             if (print_count == 10) {
                 sbi_shutdown(); // 关机
             }
-        }
-	    if (current != NULL) {
-            current->need_resched = 1;
+            if (current != NULL) {
+                current->need_resched = 1;
+            }
         }
         break;
     case IRQ_H_TIMER:
@@ -225,20 +225,44 @@ void exception_handler(struct trapframe *tf)
         break;
     case CAUSE_FETCH_PAGE_FAULT:
         cprintf("Instruction page fault\n");
-        if ((ret = do_pgfault(current->mm, 0, tf->tval)) != 0) {
-            do_exit(-E_FAULT);
+        if (USER_ACCESS(tf->tval, tf->tval + 1)) {
+            if ((ret = do_pgfault(current->mm, 0, tf->tval)) != 0) {
+                if (trap_in_kernel(tf)) {
+                    panic("kernel page fault on user address");
+                } else {
+                    do_exit(-E_FAULT);
+                }
+            }
+        } else {
+            panic("kernel page fault");
         }
         break;
     case CAUSE_LOAD_PAGE_FAULT:
         cprintf("Load page fault\n");
-        if ((ret = do_pgfault(current->mm, 0, tf->tval)) != 0) {
-            do_exit(-E_FAULT);
+        if (USER_ACCESS(tf->tval, tf->tval + 1)) {
+            if ((ret = do_pgfault(current->mm, 0, tf->tval)) != 0) {
+                if (trap_in_kernel(tf)) {
+                    panic("kernel page fault on user address");
+                } else {
+                    do_exit(-E_FAULT);
+                }
+            }
+        } else {
+            panic("kernel page fault");
         }
         break;
     case CAUSE_STORE_PAGE_FAULT:
         cprintf("Store/AMO page fault\n");
-        if ((ret = do_pgfault(current->mm, 1, tf->tval)) != 0) {
-            do_exit(-E_FAULT);
+        if (USER_ACCESS(tf->tval, tf->tval + 1)) {
+            if ((ret = do_pgfault(current->mm, 1, tf->tval)) != 0) {
+                if (trap_in_kernel(tf)) {
+                    panic("kernel page fault on user address");
+                } else {
+                    do_exit(-E_FAULT);
+                }
+            }
+        } else {
+            panic("kernel page fault");
         }
         break;
     default:

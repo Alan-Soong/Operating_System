@@ -91,6 +91,24 @@ page2ppn(struct Page *page)
     return page - pages + nbase;
 }
 
+
+static inline void
+page_lock(struct Page *page)
+{
+    while (test_and_set_bit(0, &page->lock))
+    {
+        __asm__ __volatile__("nop");
+    }
+}
+
+static inline void
+page_unlock(struct Page *page)
+{
+    if (!test_and_clear_bit(0, &page->lock))
+    {
+        panic("page_unlock without lock");
+    }
+}
 static inline uintptr_t
 page2pa(struct Page *page)
 {

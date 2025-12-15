@@ -152,53 +152,62 @@ int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
         }
         ret = 0;
     }
+    else if (error_code == 1)
+    {
+        /* store/AMO fault -> write attempted */
+        for (;;)
+        {
+            pte_t entry = *ptep;
+            if (entry & PTE_W)
+            {
+                ret = 0;
+                break;
+            }
+            if (!(entry & PTE_COW))
+            {
+                goto failed;
+            }
+
+            struct Page *page = pte2page(entry);
+            page_lock(page);
+            if (*ptep != entry)
+            {
+                page_unlock(page);
+                continue;
+            }
+
+            int ref = page_ref(page);
+            if (ref == 1)
+            {
+                *ptep = (entry | PTE_W) & ~PTE_COW;
+                tlb_invalidate(mm->pgdir, addr);
+                page_unlock(page);
+                ret = 0;
+                break;
+            }
+
+            struct Page *npage = alloc_page();
+            if (npage == NULL)
+            {
+                page_unlock(page);
+                goto failed;
+            }
+            memcpy(page2kva(npage), page2kva(page), PGSIZE);
+            if (page_insert(mm->pgdir, npage, addr, perm) != 0)
+            {
+                free_page(npage);
+                page_unlock(page);
+                goto failed;
+            }
+            page_unlock(page);
+            ret = 0;
+            break;
+        }
+    }
     else
     {
-        /* Page is present. Handle COW on write faults: */
-        if (error_code == 1)
-        {
-            // cprintf("do_pgfault: write fault for addr 0x%08x\n", addr);
-            /* store/AMO fault -> write attempted */
-            if (*ptep & PTE_W)
-            {
-                /* writable already (unexpected), allow */
-                ret = 0;
-            }
-            else
-            {
-                struct Page *page = pte2page(*ptep);
-                if (page_ref(page) > 1)
-                {
-                    // cprintf("do_pgfault: shared page detected for addr 0x%08x\n", addr);
-                    /* shared: allocate a private copy */
-                    struct Page *npage = alloc_page();
-                    if (npage == NULL)
-                    {
-                        goto failed;
-                    }
-                    memcpy(page2kva(npage), page2kva(page), PGSIZE);
-                    if (page_insert(mm->pgdir, npage, addr, perm) != 0)
-                    {
-                        free_page(npage);
-                        goto failed;
-                    }
-                    ret = 0;
-                }
-                else
-                {
-                    /* sole owner: just enable write */
-                    *ptep |= PTE_W;
-                    tlb_invalidate(mm->pgdir, addr);
-                    // cprintf("do_pgfault: enabled write for addr 0x%08x\n", addr);
-                    ret = 0;
-                }
-            }
-        }
-        else
-        {
-            /* load/fetch fault on present page: nothing to do */
-            ret = 0;
-        }
+        /* load/fetch fault on present page: nothing to do */
+        ret = 0;
     }
 failed:
     return ret;
@@ -364,7 +373,7 @@ int dup_mmap(struct mm_struct *to, struct mm_struct *from)
 
         insert_vma_struct(to, nvma);
 
-        bool share = 1;
+        bool share = 1;  // re-enable COW
         if (copy_range(to->pgdir, from->pgdir, vma->vm_start, vma->vm_end, share) != 0)
         {
             return -E_NO_MEM;
