@@ -31,10 +31,10 @@ DTB init completed
 
 Special kernel symbols:
   entry  0xc020004a (virtual)
-  etext  0xc0205bcc (virtual)
-  edata  0xc02b0b90 (virtual)
-  end    0xc02b5044 (virtual)
-Kernel executable memory footprint: 724KB
+  etext  0xc0205f6a (virtual)
+  edata  0xc02b1cc0 (virtual)
+  end    0xc02b6174 (virtual)
+Kernel executable memory footprint: 729KB
 memory management: default_pmm_manager
 physcial memory map:
   memory: 0x08000000, [0x80000000, 0x87ffffff].
@@ -61,52 +61,6 @@ Store/AMO page fault
 Store/AMO page fault
 Store/AMO page fault
 Store/AMO page fault
-I am child 9
-Store/AMO page fault
-I am child 8
-Store/AMO page fault
-I am child 7
-Store/AMO page fault
-I am child 6
-Store/AMO page fault
-I am child 5
-Store/AMO page fault
-I am child 4
-Store/AMO page fault
-I am child 3
-Store/AMO page fault
-I am child 2
-Store/AMO page fault
-I am child 1
-Store/AMO page fault
-I am child 0
-Store/AMO page fault
-Store/AMO page fault
-Store/AMO page fault
-Store/AMO page fault
-Store/AMO page fault
-Store/AMO page fault
-Store/AMO page fault
-Store/AMO page fault
-Store/AMO page fault
-Store/AMO page fault
-I am child 18
-Store/AMO page fault
-I am child 17
-Store/AMO page fault
-I am child 16
-Store/AMO page fault
-I am child 15
-Store/AMO page fault
-I am child 14
-Store/AMO page fault
-I am child 13
-Store/AMO page fault
-I am child 12
-Store/AMO page fault
-I am child 11
-Store/AMO page fault
-I am child 10
 Store/AMO page fault
 Store/AMO page fault
 Store/AMO page fault
@@ -118,6 +72,17 @@ Store/AMO page fault
 Store/AMO page fault
 Store/AMO page fault
 Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+Store/AMO page fault
+I am child 31
 Store/AMO page fault
 I am child 30
 Store/AMO page fault
@@ -143,8 +108,43 @@ I am child 20
 Store/AMO page fault
 I am child 19
 Store/AMO page fault
+I am child 18
 Store/AMO page fault
-I am child 31
+I am child 17
+Store/AMO page fault
+I am child 16
+Store/AMO page fault
+I am child 15
+Store/AMO page fault
+I am child 14
+Store/AMO page fault
+I am child 13
+Store/AMO page fault
+I am child 12
+Store/AMO page fault
+I am child 11
+Store/AMO page fault
+I am child 10
+Store/AMO page fault
+I am child 9
+Store/AMO page fault
+I am child 8
+Store/AMO page fault
+I am child 7
+Store/AMO page fault
+I am child 6
+Store/AMO page fault
+I am child 5
+Store/AMO page fault
+I am child 4
+Store/AMO page fault
+I am child 3
+Store/AMO page fault
+I am child 2
+Store/AMO page fault
+I am child 1
+Store/AMO page fault
+I am child 0
 forktest pass.
 all user-mode processes have quit.
 init check memory pass.

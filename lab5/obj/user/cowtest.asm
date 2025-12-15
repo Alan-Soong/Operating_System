@@ -191,7 +191,7 @@ exit(int error_code) {
   8000cc:	fe5ff0ef          	jal	ra,8000b0 <sys_exit>
     cprintf("BUG: exit failed.\n");
   8000d0:	00000517          	auipc	a0,0x0
-  8000d4:	4c850513          	addi	a0,a0,1224 # 800598 <main+0x9c>
+  8000d4:	4f050513          	addi	a0,a0,1264 # 8005c0 <main+0xc4>
   8000d8:	f69ff0ef          	jal	ra,800040 <cprintf>
     while (1);
   8000dc:	a001                	j	8000dc <exit+0x14>
@@ -278,7 +278,7 @@ printnum(void (*putch)(int, void*), void *putdat,
     putch("0123456789abcdef"[mod], putdat);
   80012a:	1a02                	slli	s4,s4,0x20
   80012c:	00000797          	auipc	a5,0x0
-  800130:	48478793          	addi	a5,a5,1156 # 8005b0 <main+0xb4>
+  800130:	4ac78793          	addi	a5,a5,1196 # 8005d8 <main+0xdc>
   800134:	020a5a13          	srli	s4,s4,0x20
   800138:	9a3e                	add	s4,s4,a5
     // Crashes if num >= base. No idea what going on here
@@ -349,7 +349,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap) 
         width = precision = -1;
   800186:	5b7d                	li	s6,-1
   800188:	00000a97          	auipc	s5,0x0
-  80018c:	45ca8a93          	addi	s5,s5,1116 # 8005e4 <main+0xe8>
+  80018c:	484a8a93          	addi	s5,s5,1156 # 80060c <main+0x110>
         case 'e':
             err = va_arg(ap, int);
             if (err < 0) {
@@ -357,7 +357,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap) 
             }
             if (err > MAXERROR || (p = error_string[err]) == NULL) {
   800190:	00000b97          	auipc	s7,0x0
-  800194:	670b8b93          	addi	s7,s7,1648 # 800800 <error_string>
+  800194:	698b8b93          	addi	s7,s7,1688 # 800828 <error_string>
         while ((ch = *(unsigned char *)fmt ++) != '%') {
   800198:	000d4503          	lbu	a0,0(s10)
   80019c:	001d0413          	addi	s0,s10,1
@@ -670,21 +670,21 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap) 
                 printfmt(putch, putdat, "%s", p);
   8003e4:	86be                	mv	a3,a5
   8003e6:	00000617          	auipc	a2,0x0
-  8003ea:	1fa60613          	addi	a2,a2,506 # 8005e0 <main+0xe4>
+  8003ea:	22260613          	addi	a2,a2,546 # 800608 <main+0x10c>
   8003ee:	85a6                	mv	a1,s1
   8003f0:	854a                	mv	a0,s2
   8003f2:	0ce000ef          	jal	ra,8004c0 <printfmt>
   8003f6:	b34d                	j	800198 <vprintfmt+0x3a>
                 printfmt(putch, putdat, "error %d", err);
   8003f8:	00000617          	auipc	a2,0x0
-  8003fc:	1d860613          	addi	a2,a2,472 # 8005d0 <main+0xd4>
+  8003fc:	20060613          	addi	a2,a2,512 # 8005f8 <main+0xfc>
   800400:	85a6                	mv	a1,s1
   800402:	854a                	mv	a0,s2
   800404:	0bc000ef          	jal	ra,8004c0 <printfmt>
   800408:	bb41                	j	800198 <vprintfmt+0x3a>
                 p = "(null)";
   80040a:	00000417          	auipc	s0,0x0
-  80040e:	1be40413          	addi	s0,s0,446 # 8005c8 <main+0xcc>
+  80040e:	1e640413          	addi	s0,s0,486 # 8005f0 <main+0xf4>
                 for (width -= strnlen(p, precision); width > 0; width --) {
   800412:	85e2                	mv	a1,s8
   800414:	8522                	mv	a0,s0
@@ -747,14 +747,14 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap) 
   800490:	f6d79de3          	bne	a5,a3,80040a <vprintfmt+0x2ac>
                 p = "(null)";
   800494:	00000417          	auipc	s0,0x0
-  800498:	13440413          	addi	s0,s0,308 # 8005c8 <main+0xcc>
+  800498:	15c40413          	addi	s0,s0,348 # 8005f0 <main+0xf4>
             for (; (ch = *p ++) != '\0' && (precision < 0 || -- precision >= 0); width --) {
   80049c:	02800793          	li	a5,40
   8004a0:	02800513          	li	a0,40
   8004a4:	00140a13          	addi	s4,s0,1
   8004a8:	bd6d                	j	800362 <vprintfmt+0x204>
   8004aa:	00000a17          	auipc	s4,0x0
-  8004ae:	11fa0a13          	addi	s4,s4,287 # 8005c9 <main+0xcd>
+  8004ae:	147a0a13          	addi	s4,s4,327 # 8005f1 <main+0xf5>
   8004b2:	02800513          	li	a0,40
   8004b6:	02800793          	li	a5,40
                 if (altflag && (ch < ' ' || ch > '~')) {
@@ -811,83 +811,99 @@ strnlen(const char *s, size_t len) {
   8004fa:	8082                	ret
 
 00000000008004fc <main>:
- * - use a global variable in .data so it's mapped in user memory
- * - parent sets shared=42, forks; child writes 100 and prints; parent waits and checks value
+ * - parent sets values, forks; child modifies and prints; parent checks isolation
  */
 static volatile int shared = 42;
+static volatile int array[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
 int main(void) {
   8004fc:	1141                	addi	sp,sp,-16
   8004fe:	e406                	sd	ra,8(sp)
+  800500:	e022                	sd	s0,0(sp)
     int pid = fork();
-  800500:	bdfff0ef          	jal	ra,8000de <fork>
+  800502:	bddff0ef          	jal	ra,8000de <fork>
     if (pid < 0) {
-  800504:	04054d63          	bltz	a0,80055e <main+0x62>
+  800506:	06054d63          	bltz	a0,800580 <main+0x84>
         cprintf("fork failed\n");
         return -1;
     }
     if (pid == 0) {
-  800508:	c13d                	beqz	a0,80056e <main+0x72>
-        shared = 100;
+  80050a:	c159                	beqz	a0,800590 <main+0x94>
+        array[0] = 999;
         cprintf("child shared=%d\n", shared);
         exit(0);
     } else {
-        /* parent */
+        /* parent: wait and check */
         int w = wait();
-  80050a:	bd7ff0ef          	jal	ra,8000e0 <wait>
+  80050c:	bd5ff0ef          	jal	ra,8000e0 <wait>
         (void)w;
         cprintf("parent shared=%d\n", shared);
-  80050e:	00001597          	auipc	a1,0x1
-  800512:	af25a583          	lw	a1,-1294(a1) # 801000 <shared>
-  800516:	00000517          	auipc	a0,0x0
-  80051a:	3da50513          	addi	a0,a0,986 # 8008f0 <error_string+0xf0>
-  80051e:	b23ff0ef          	jal	ra,800040 <cprintf>
-        if (shared == 42) {
-  800522:	00001717          	auipc	a4,0x1
-  800526:	ade72703          	lw	a4,-1314(a4) # 801000 <shared>
-  80052a:	02a00793          	li	a5,42
-  80052e:	00f71c63          	bne	a4,a5,800546 <main+0x4a>
+  800510:	00001597          	auipc	a1,0x1
+  800514:	b185a583          	lw	a1,-1256(a1) # 801028 <shared>
+  800518:	00000517          	auipc	a0,0x0
+  80051c:	40050513          	addi	a0,a0,1024 # 800918 <error_string+0xf0>
+  800520:	b21ff0ef          	jal	ra,800040 <cprintf>
+        if (shared == 42 && array[0] == 0) {
+  800524:	00001717          	auipc	a4,0x1
+  800528:	b0472703          	lw	a4,-1276(a4) # 801028 <shared>
+  80052c:	02a00793          	li	a5,42
+  800530:	02f71663          	bne	a4,a5,80055c <main+0x60>
+  800534:	00001417          	auipc	s0,0x1
+  800538:	acc42403          	lw	s0,-1332(s0) # 801000 <array>
+  80053c:	00001797          	auipc	a5,0x1
+  800540:	ac478793          	addi	a5,a5,-1340 # 801000 <array>
+  800544:	e005                	bnez	s0,800564 <main+0x68>
             cprintf("cowtest pass.\n");
-  800532:	00000517          	auipc	a0,0x0
-  800536:	3d650513          	addi	a0,a0,982 # 800908 <error_string+0x108>
-  80053a:	b07ff0ef          	jal	ra,800040 <cprintf>
-            return 0;
-  80053e:	4501                	li	a0,0
+  800546:	00000517          	auipc	a0,0x0
+  80054a:	3ea50513          	addi	a0,a0,1002 # 800930 <error_string+0x108>
+  80054e:	af3ff0ef          	jal	ra,800040 <cprintf>
         } else {
-            cprintf("cowtest fail: parent sees %d\n", shared);
+            cprintf("cowtest fail: parent sees shared=%d, array[0]=%d\n", shared, array[0]);
             return -1;
         }
     }
-  800540:	60a2                	ld	ra,8(sp)
-  800542:	0141                	addi	sp,sp,16
-  800544:	8082                	ret
-            cprintf("cowtest fail: parent sees %d\n", shared);
-  800546:	00001597          	auipc	a1,0x1
-  80054a:	aba5a583          	lw	a1,-1350(a1) # 801000 <shared>
-  80054e:	00000517          	auipc	a0,0x0
-  800552:	3ca50513          	addi	a0,a0,970 # 800918 <error_string+0x118>
-  800556:	aebff0ef          	jal	ra,800040 <cprintf>
+  800552:	60a2                	ld	ra,8(sp)
+  800554:	8522                	mv	a0,s0
+  800556:	6402                	ld	s0,0(sp)
+  800558:	0141                	addi	sp,sp,16
+  80055a:	8082                	ret
+  80055c:	00001797          	auipc	a5,0x1
+  800560:	aa478793          	addi	a5,a5,-1372 # 801000 <array>
+            cprintf("cowtest fail: parent sees shared=%d, array[0]=%d\n", shared, array[0]);
+  800564:	00001597          	auipc	a1,0x1
+  800568:	ac45a583          	lw	a1,-1340(a1) # 801028 <shared>
+  80056c:	4390                	lw	a2,0(a5)
+  80056e:	00000517          	auipc	a0,0x0
+  800572:	3d250513          	addi	a0,a0,978 # 800940 <error_string+0x118>
             return -1;
-  80055a:	557d                	li	a0,-1
-  80055c:	b7d5                	j	800540 <main+0x44>
+  800576:	547d                	li	s0,-1
+            cprintf("cowtest fail: parent sees shared=%d, array[0]=%d\n", shared, array[0]);
+  800578:	2601                	sext.w	a2,a2
+  80057a:	ac7ff0ef          	jal	ra,800040 <cprintf>
+            return -1;
+  80057e:	bfd1                	j	800552 <main+0x56>
         cprintf("fork failed\n");
-  80055e:	00000517          	auipc	a0,0x0
-  800562:	36a50513          	addi	a0,a0,874 # 8008c8 <error_string+0xc8>
-  800566:	adbff0ef          	jal	ra,800040 <cprintf>
-        return -1;
-  80056a:	557d                	li	a0,-1
-  80056c:	bfd1                	j	800540 <main+0x44>
-        shared = 100;
-  80056e:	00001797          	auipc	a5,0x1
-  800572:	a9278793          	addi	a5,a5,-1390 # 801000 <shared>
-  800576:	06400713          	li	a4,100
-  80057a:	c398                	sw	a4,0(a5)
-        cprintf("child shared=%d\n", shared);
-  80057c:	438c                	lw	a1,0(a5)
-  80057e:	00000517          	auipc	a0,0x0
-  800582:	35a50513          	addi	a0,a0,858 # 8008d8 <error_string+0xd8>
-  800586:	2581                	sext.w	a1,a1
+  800580:	00000517          	auipc	a0,0x0
+  800584:	37050513          	addi	a0,a0,880 # 8008f0 <error_string+0xc8>
   800588:	ab9ff0ef          	jal	ra,800040 <cprintf>
+        return -1;
+  80058c:	547d                	li	s0,-1
+  80058e:	b7d1                	j	800552 <main+0x56>
+        shared = 100;
+  800590:	00001797          	auipc	a5,0x1
+  800594:	a9878793          	addi	a5,a5,-1384 # 801028 <shared>
+  800598:	06400713          	li	a4,100
+  80059c:	c398                	sw	a4,0(a5)
+        array[0] = 999;
+  80059e:	3e700713          	li	a4,999
+  8005a2:	00001697          	auipc	a3,0x1
+  8005a6:	a4e6af23          	sw	a4,-1442(a3) # 801000 <array>
+        cprintf("child shared=%d\n", shared);
+  8005aa:	438c                	lw	a1,0(a5)
+  8005ac:	00000517          	auipc	a0,0x0
+  8005b0:	35450513          	addi	a0,a0,852 # 800900 <error_string+0xd8>
+  8005b4:	2581                	sext.w	a1,a1
+  8005b6:	a8bff0ef          	jal	ra,800040 <cprintf>
         exit(0);
-  80058c:	4501                	li	a0,0
-  80058e:	b3bff0ef          	jal	ra,8000c8 <exit>
+  8005ba:	4501                	li	a0,0
+  8005bc:	b0dff0ef          	jal	ra,8000c8 <exit>
