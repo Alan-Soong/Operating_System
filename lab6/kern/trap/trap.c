@@ -131,7 +131,19 @@ void interrupt_handler(struct trapframe *tf)
 
         // lab6: YOUR CODE  (update LAB3 steps)
         //  在时钟中断时调用调度器的 sched_class_proc_tick 函数
+        // 1. 设置下次时钟中断
+        clock_set_next_event();
 
+        // 2. 计数器加一
+        ticks++;
+
+        // 4. (可选) 打印 ticks，方便调试，不加也可以
+        if (ticks % TICK_NUM == 0) {
+            print_ticks();
+        }
+
+        // 5. 调用调度器的时钟处理函数 (RR算法的核心)
+        sched_class_proc_tick(current);
         break;
     case IRQ_H_TIMER:
         cprintf("Hypervisor software interrupt\n");

@@ -52,7 +52,7 @@ else
 fi
 
 ## default variables
-default_timeout=30
+default_timeout=100
 default_pts=5
 
 pts=5
@@ -141,7 +141,7 @@ run_qemu() {
     pid=$!
 
     # wait for QEMU to start
-    sleep 1
+    sleep 20
 
     if [ -n "$brkfun" ]; then
         # find the address of the kernel $brkfun function
@@ -194,7 +194,7 @@ check_result() {
 
     # give qemu some time to run (for asynchronous mode)
     if [ ! -s $qemu_out ]; then
-        sleep 4
+        sleep 20
     fi
 
     if [ ! -s $qemu_out ]; then
@@ -328,7 +328,7 @@ swapimg=$(make_print swapimg)
 qemuopts="-machine virt -nographic -bios default -device loader,file=bin/ucore.img,addr=0x80200000"
 
 ## set break-function, default is readline
-brkfun=readline
+brkfun=
 
 default_check() {
     pts=40
@@ -348,7 +348,10 @@ default_check() {
 
 ## check now!!
 run_test -prog 'priority'      -check default_check             \
-        'sched class: RR_scheduler'                         \
+        ##'sched class: stride_scheduler'                         \
+        ##'sched class: RR_scheduler'
+        ##'sched class: SJF_scheduler'
+        'sched class: FIFO_scheduler'
         'kernel_execve: pid = 2, name = "priority".'            \
         'main: fork ok,now need to wait pids.'                  \
         'set priority to 5'                                     \

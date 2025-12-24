@@ -18,6 +18,8 @@ static void
 RR_init(struct run_queue *rq)
 {
     // LAB6: YOUR CODE
+    list_init(&rq->run_list);
+    rq->proc_num = 0;
 }
 
 /*
@@ -35,6 +37,18 @@ static void
 RR_enqueue(struct run_queue *rq, struct proc_struct *proc)
 {
     // LAB6: YOUR CODE
+    assert(list_empty(&(proc->run_link))); // 确保进程不在其他队列中
+    
+    list_add_before(&(rq->run_list), &(proc->run_link)); // 将进程加入队列尾部
+    // list_add_before 在头结点之前插入，对于双向循环链表来说，就是在队尾插入
+
+    if (proc->time_slice == 0 || proc->time_slice > rq->max_time_slice) {
+        proc->time_slice = rq->max_time_slice; // 重置进程的时间片
+    }
+    
+    proc->rq = rq; // 设置进程所属的运行队列
+    rq->proc_num++; // 运行队列进程数加1
+
 }
 
 /*
@@ -48,6 +62,10 @@ static void
 RR_dequeue(struct run_queue *rq, struct proc_struct *proc)
 {
     // LAB6: YOUR CODE
+    assert(!list_empty(&(proc->run_link)) && proc->rq == rq); // 确保进程在队列中
+
+    list_del_init(&(proc->run_link)); // 从链表中删除该节点并重新初始化
+    rq->proc_num--; // 运行队列进程数减1
 }
 
 /*
@@ -62,6 +80,13 @@ static struct proc_struct *
 RR_pick_next(struct run_queue *rq)
 {
     // LAB6: YOUR CODE
+    list_entry_t *le = list_next(&(rq->run_list)); // 获取队列的第一个节点
+    
+    if (le != &(rq->run_list)) { // 确保队列不为空（不是指向头结点自己）
+        return le2proc(le, run_link); // 将链表节点转换为进程结构体指针返回
+    }
+    
+    return NULL; // 队列为空
 }
 
 /*
@@ -75,6 +100,13 @@ static void
 RR_proc_tick(struct run_queue *rq, struct proc_struct *proc)
 {
     // LAB6: YOUR CODE
+    if (proc->time_slice > 0) {
+        proc->time_slice--; // 递减当前进程的时间片
+    }
+
+    if (proc->time_slice <= 0) {
+        proc->need_resched = 1; // 如果时间片耗尽，设置需要调度标志，请求切换进程
+    }
 }
 
 struct sched_class default_sched_class = {
