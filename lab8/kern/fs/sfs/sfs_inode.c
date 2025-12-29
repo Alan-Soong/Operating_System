@@ -599,7 +599,63 @@ sfs_io_nolock(struct sfs_fs *sfs, struct sfs_inode *sin, void *buf, off_t offset
      * (3) If end position isn't aligned with the last block, Rd/Wr some content from begin to the (endpos % SFS_BLKSIZE) of the last block
 	 *       NOTICE: useful function: sfs_bmap_load_nolock, sfs_buf_op	
 	*/
+// 逻辑块索引的起始偏移
+    blkoff = offset % SFS_BLKSIZE;
+    
+    // (1) 处理起始不对齐的部分
+    if (blkoff != 0) {
+        // 计算当前块内需要读取/写入的字节数
+        // 如果跨块，则读到块末尾；如果不跨块，则读到结束位置
+        size = (nblks != 0) ? (SFS_BLKSIZE - blkoff) : (endpos - offset);
+        
+        // 将逻辑块号 blkno 转换为磁盘块号 ino
+        if ((ret = sfs_bmap_load_nolock(sfs, sin, blkno, &ino)) != 0) {
+            goto out;
+        }
+        // 调用缓冲区操作函数（sfs_rbuf 或 sfs_wbuf）进行部分块读写
+        if ((ret = sfs_buf_op(sfs, buf, size, ino, blkoff)) != 0) {
+            goto out;
+        }
+        
+        alen += size;
+        if (nblks == 0) {
+            // 如果只有这一部分数据，直接跳到完成
+            goto out;
+        }
+        
+        // 更新偏移变量
+        buf += size;
+        blkno ++;
+        nblks --;
+    }
 
+    // (2) 处理对齐的中间块
+    // 注意：虽然 sfs_block_op 支持一次处理多个块，
+    // 但由于 SFS 的索引节点可能不连续，通常建议逐块处理或确认连续性。
+    while (nblks > 0) {
+        if ((ret = sfs_bmap_load_nolock(sfs, sin, blkno, &ino)) != 0) {
+            goto out;
+        }
+        if ((ret = sfs_block_op(sfs, buf, ino, 1)) != 0) {
+            goto out;
+        }
+        alen += SFS_BLKSIZE;
+        buf += SFS_BLKSIZE;
+        blkno ++;
+        nblks --;
+    }
+
+    // (3) 处理末尾不对齐的部分
+    size = endpos % SFS_BLKSIZE;
+    if (size != 0) {
+        if ((ret = sfs_bmap_load_nolock(sfs, sin, blkno, &ino)) != 0) {
+            goto out;
+        }
+        if ((ret = sfs_buf_op(sfs, buf, size, ino, 0)) != 0) {
+            goto out;
+        }
+        alen += size;
+    }
     
 
 out:

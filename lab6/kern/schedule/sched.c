@@ -57,8 +57,8 @@ void sched_init(void)
     list_init(&timer_list);
 
     //sched_class = &fifo_sched_class;    // 测试 FIFO
-    sched_class = &sjf_sched_class;     // 测试 SJF
-    //sched_class = &default_sched_class; // 测试 RR
+    //sched_class = &sjf_sched_class;     // 测试 SJF
+    sched_class = &default_sched_class; // 测试 RR
     //sched_class = &stride_sched_class;  // 测试 Stride
 
     rq = &__rq;

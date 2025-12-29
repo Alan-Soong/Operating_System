@@ -216,8 +216,9 @@ switch_kernel_memorylayout()
         bootstack[-PGSIZE] = 0;
 
         // set pages beneath and above the kernel stack as guardians
-        boot_map_segment(boot_pgdir_va, bootstackguard, PGSIZE, PADDR(bootstackguard), 0);
-        boot_map_segment(boot_pgdir_va, boot_page_table_sv39, PGSIZE, PADDR(boot_page_table_sv39), 0);
+
+boot_map_segment(boot_pgdir_va, (uintptr_t)bootstackguard, PGSIZE, PADDR(bootstackguard), 0);
+boot_map_segment(boot_pgdir_va, (uintptr_t)boot_page_table_sv39, PGSIZE, PADDR(boot_page_table_sv39), 0);
         flush_tlb();
 
         // the following four statements should all crash
@@ -431,23 +432,18 @@ void exit_range(pde_t *pgdir, uintptr_t start, uintptr_t end)
  *
  * CALL GRAPH: copy_mm-->dup_mmap-->copy_range
  */
-int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
-               bool share)
+int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share)
 {
     assert(start % PGSIZE == 0 && end % PGSIZE == 0);
     assert(USER_ACCESS(start, end));
-    // copy content by page unit.
     do
     {
-        // call get_pte to find process A's pte according to the addr start
         pte_t *ptep = get_pte(from, start, 0), *nptep;
         if (ptep == NULL)
         {
             start = ROUNDDOWN(start + PTSIZE, PTSIZE);
             continue;
         }
-        // call get_pte to find process B's pte according to the addr start. If
-        // pte is NULL, just alloc a PT
         if (*ptep & PTE_V)
         {
             if ((nptep = get_pte(to, start, 1)) == NULL)
@@ -455,38 +451,25 @@ int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
                 return -E_NO_MEM;
             }
             uint32_t perm = (*ptep & PTE_USER);
-            // get page from ptep
             struct Page *page = pte2page(*ptep);
-            // alloc a page for process B
-            struct Page *npage = alloc_page();
             assert(page != NULL);
+
+            /* 标准 Lab 8 逻辑：直接分配新页并拷贝内容 */
+            struct Page *npage = alloc_page();
             assert(npage != NULL);
-            int ret = 0;
-            /* LAB5:填写你在lab5中实现的代码
-             * replicate content of page to npage, build the map of phy addr of
-             * nage with the linear addr start
-             *
-             * Some Useful MACROs and DEFINEs, you can use them in below
-             * implementation.
-             * MACROs or Functions:
-             *    page2kva(struct Page *page): return the kernel vritual addr of
-             * memory which page managed (SEE pmm.h)
-             *    page_insert: build the map of phy addr of an Page with the
-             * linear addr la
-             *    memcpy: typical memory copy function
-             *
-             * (1) find src_kvaddr: the kernel virtual address of page
-             * (2) find dst_kvaddr: the kernel virtual address of npage
-             * (3) memory copy from src_kvaddr to dst_kvaddr, size is PGSIZE
-             * (4) build the map of phy addr of  nage with the linear addr start
-             */
             
+            void *src_kvaddr = page2kva(page);
+            void *dst_kvaddr = page2kva(npage);
+            memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
+            
+            int ret = page_insert(to, npage, start, perm);
             assert(ret == 0);
         }
         start += PGSIZE;
     } while (start != 0 && start < end);
     return 0;
 }
+
 
 // page_remove - free an Page which is related linear address la and has an
 // validated pte
