@@ -17,7 +17,7 @@
 static void
 RR_init(struct run_queue *rq)
 {
-    // LAB6: YOUR CODE
+    // LAB6: 2311101
     list_init(&rq->run_list);
     rq->proc_num = 0;
 }
@@ -36,7 +36,7 @@ RR_init(struct run_queue *rq)
 static void
 RR_enqueue(struct run_queue *rq, struct proc_struct *proc)
 {
-    // LAB6: YOUR CODE
+    // LAB6: 2311101
     assert(list_empty(&(proc->run_link))); // 确保进程不在其他队列中
     
     list_add_before(&(rq->run_list), &(proc->run_link)); // 将进程加入队列尾部
@@ -61,7 +61,7 @@ RR_enqueue(struct run_queue *rq, struct proc_struct *proc)
 static void
 RR_dequeue(struct run_queue *rq, struct proc_struct *proc)
 {
-    // LAB6: YOUR CODE
+    // LAB6: 2311101
     assert(!list_empty(&(proc->run_link)) && proc->rq == rq); // 确保进程在队列中
 
     list_del_init(&(proc->run_link)); // 从链表中删除该节点并重新初始化
@@ -79,7 +79,7 @@ RR_dequeue(struct run_queue *rq, struct proc_struct *proc)
 static struct proc_struct *
 RR_pick_next(struct run_queue *rq)
 {
-    // LAB6: YOUR CODE
+    // LAB6: 2311101
     list_entry_t *le = list_next(&(rq->run_list)); // 获取队列的第一个节点
     
     if (le != &(rq->run_list)) { // 确保队列不为空（不是指向头结点自己）
@@ -99,7 +99,7 @@ RR_pick_next(struct run_queue *rq)
 static void
 RR_proc_tick(struct run_queue *rq, struct proc_struct *proc)
 {
-    // LAB6: YOUR CODE
+    // LAB6: 2311101
     if (proc->time_slice > 0) {
         proc->time_slice--; // 递减当前进程的时间片
     }

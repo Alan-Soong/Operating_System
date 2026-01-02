@@ -128,7 +128,7 @@ alloc_proc(void)
          */
         proc->wait_state = 0;
         proc->cptr = proc->yptr = proc->optr = NULL;
-        // LAB6:YOUR CODE (update LAB5 steps)
+        // LAB6:2311095 (update LAB5 steps)
         /*
          * below fields(add in LAB6) in proc_struct need to be initialized
          *       struct run_queue *rq;                       // run queue contains Process
@@ -979,7 +979,8 @@ user_main(void *arg)
 #ifdef TEST
     KERNEL_EXECVE2(TEST, TESTSTART, TESTSIZE);
 #else
-    KERNEL_EXECVE(priority);
+    KERNEL_EXECVE(priority); 
+    //KERNEL_EXECVE(sched_test);
 #endif
     panic("user_main execve failed.\n");
 }
