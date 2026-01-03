@@ -129,7 +129,7 @@ void interrupt_handler(struct trapframe *tf)
          * (4)判断打印次数，当打印次数为10时，调用<sbi.h>中的关机函数关机
          */
 
-        // lab6: YOUR CODE  (update LAB3 steps)
+        // lab6: 2311095  (update LAB3 steps)
         //  在时钟中断时调用调度器的 sched_class_proc_tick 函数
         // 1. 设置下次时钟中断
         clock_set_next_event();
